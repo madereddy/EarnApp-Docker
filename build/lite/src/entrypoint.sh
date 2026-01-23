@@ -59,7 +59,7 @@ fi
 # --------------------------
 echo "[INFO] Starting EarnApp..."
 while true; do
-    "$BIN_PATH" run || {
+    "$BIN_PATH" start || {
         echo "[WARN] EarnApp crashed. Retrying in $RETRY_DELAY seconds..."
         sleep $RETRY_DELAY
     }
