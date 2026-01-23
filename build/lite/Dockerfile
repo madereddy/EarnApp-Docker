@@ -1,7 +1,7 @@
 # --------------------------
 # Stage 1: Builder
 # --------------------------
-FROM --platform=$BUILDPLATFORM debian:bookworm-slim AS builder
+FROM --platform=$BUILDPLATFORM debian:bookworm-slim@sha256:56ff6d36d4eb3db13a741b342ec466f121480b5edded42e4b7ee850ce7a418ee AS builder
 
 ARG TARGETARCH
 ARG TARGETVARIANT
@@ -42,7 +42,7 @@ RUN if [ -z "$EARNAPP_VERSION" ]; then \
 # --------------------------
 # Stage 2: Runtime
 # --------------------------
-FROM debian:bookworm-slim
+FROM debian:bookworm-slim@sha256:56ff6d36d4eb3db13a741b342ec466f121480b5edded42e4b7ee850ce7a418ee
 
 ENV APP_DIR=/opt/earnapp
 ENV BIN_PATH=$APP_DIR/earnapp
