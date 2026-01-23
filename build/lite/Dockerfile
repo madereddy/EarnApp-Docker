@@ -1,33 +1,60 @@
-# Base image: full Ubuntu 24.04 for maximum compatibility
-FROM ubuntu:24.04@sha256:cd1dba651b3080c3686ecf4e3c4220f026b521fb76978881737d24f200828b2b
+# Base image
+FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV container=docker
+ENV EARNAPP_HOME=/opt/earnapp
+ENV CONFIG_DIR=/etc/earnapp
 
-# Install required runtime dependencies for EarnApp
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
+# --------------------------
+# Install minimal dependencies
+# --------------------------
+RUN apt-get update && apt-get install -y \
+    wget \
     curl \
-    file \
-    procps \
+    ca-certificates \
+    libssl3 \
+    libcurl4 \
+    libcap2 \
     libstdc++6 \
-    libgcc-s1 \
     bash \
- && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
+# --------------------------
+# Fake hostnamectl for EarnApp
+# --------------------------
+RUN echo -e '#!/bin/sh\nhostname' > /usr/bin/hostnamectl && chmod +x /usr/bin/hostnamectl
+
+# --------------------------
+# Fake lsb_release for EarnApp
+# --------------------------
+RUN echo -e '#!/bin/sh\necho "Distributor ID: Ubuntu"\necho "Description: Ubuntu 24.04"\necho "Release: 24.04"\necho "Codename: lunar"' \
+    > /usr/bin/lsb_release && chmod +x /usr/bin/lsb_release
+
+# --------------------------
+# Create non-root user
+# --------------------------
+RUN useradd -m earnappuser
+
+# --------------------------
 # Create directories
-RUN mkdir -p /opt/earnapp /etc/earnapp
+# --------------------------
+RUN mkdir -p $EARNAPP_HOME $CONFIG_DIR && chown -R earnappuser:earnappuser $EARNAPP_HOME $CONFIG_DIR
 
-# Copy unified entrypoint script
-COPY src/entrypoint.sh /entrypoint.sh
+WORKDIR $EARNAPP_HOME
+
+# --------------------------
+# Copy entrypoint script
+# --------------------------
+COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Persist EarnApp configuration
+# --------------------------
+# Volume for persistent configuration
+# --------------------------
 VOLUME ["/etc/earnapp"]
 
-# Healthcheck: container is healthy if EarnApp process is running
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-  CMD pgrep earnapp > /dev/null || exit 1
-
-# Run the entrypoint script as PID 1
+# --------------------------
+# Entrypoint
+# --------------------------
 ENTRYPOINT ["/entrypoint.sh"]
+CMD ["run"]

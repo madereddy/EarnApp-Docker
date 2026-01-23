@@ -9,111 +9,41 @@ CDN_BASE="https://cdn-earnapp.b-cdn.net/static"
 APP_DIR="/opt/earnapp"
 BIN_PATH="$APP_DIR/earnapp"
 CONFIG_DIR="/etc/earnapp"
-RETRY_DELAY=5           # Seconds between retries for download or crashes
-MAX_DOWNLOAD_RETRIES=5  # Max attempts for download/version fetch
+RETRY_DELAY=5
 
 # --------------------------
-# Debug Mode
+# Debug mode
 # --------------------------
 if [[ "${DEBUG_MODE:-}" == "1" ]]; then
-    echo "[INFO] DEBUG_MODE enabled, launching interactive shell..."
+    echo "[INFO] DEBUG_MODE enabled, launching shell..."
     exec bash
 fi
 
 # --------------------------
-# Check required environment variables
+# Validate UUID
 # --------------------------
 if [[ -z "${EARNAPP_UUID:-}" ]]; then
-    echo "[ERROR] EARNAPP_UUID environment variable is not set!"
-    echo "Set it via '-e EARNAPP_UUID=your-uuid' when running the container."
+    echo "[ERROR] EARNAPP_UUID not set!"
     exit 1
 fi
 
 # --------------------------
-# Setup directories
+# Prepare directories and files
 # --------------------------
 mkdir -p "$APP_DIR" "$CONFIG_DIR"
-
-# --------------------------
-# Create non-root user
-# --------------------------
-if ! id earnappuser &>/dev/null; then
-    useradd -m earnappuser
-fi
-chown -R earnappuser:earnappuser "$APP_DIR" "$CONFIG_DIR"
-export HOME="/home/earnappuser"
-
-# --------------------------
-# Fetch EarnApp version
-# --------------------------
-echo "[INFO] Fetching EarnApp version info..."
-version_attempts=0
-while [[ $version_attempts -lt $MAX_DOWNLOAD_RETRIES ]]; do
-    if curl -fsSL "$INSTALLER_URL" -o /tmp/earnapp_install.sh; then
-        VERSION=$(grep -E '^VERSION=' /tmp/earnapp_install.sh | cut -d'"' -f2)
-        if [[ -n "$VERSION" ]]; then
-            echo "[INFO] Detected EarnApp version: $VERSION"
-            break
-        fi
-    fi
-    version_attempts=$((version_attempts + 1))
-    echo "[WARN] Failed to fetch version info. Retry $version_attempts/$MAX_DOWNLOAD_RETRIES in $RETRY_DELAY s..."
-    sleep $RETRY_DELAY
-done
-
-if [[ -z "$VERSION" ]]; then
-    echo "[ERROR] Could not determine EarnApp version after $MAX_DOWNLOAD_RETRIES attempts."
-    exit 1
-fi
-
-# --------------------------
-# Determine architecture
-# --------------------------
-ARCH=$(uname -m)
-PRODUCT="earnapp"
-case "$ARCH" in
-    x86_64|amd64) FILE="$PRODUCT-x64-$VERSION" ;;
-    armv6l|armv7l) FILE="$PRODUCT-arm7l-$VERSION" ;;
-    aarch64|arm64) FILE="$PRODUCT-aarch64-$VERSION" ;;
-    *)
-        echo "[ERROR] Unsupported architecture: $ARCH"
-        exit 1
-        ;;
-esac
-
-# --------------------------
-# Download EarnApp binary
-# --------------------------
-DOWNLOAD_URL="$CDN_BASE/$FILE"
-echo "[INFO] Downloading EarnApp binary for $ARCH from $DOWNLOAD_URL..."
-download_attempts=0
-while [[ $download_attempts -lt $MAX_DOWNLOAD_RETRIES ]]; do
-    if curl -fL "$DOWNLOAD_URL" -o "$BIN_PATH"; then
-        chmod +x "$BIN_PATH"
-        echo "[INFO] EarnApp binary downloaded and executable."
-        break
-    fi
-    download_attempts=$((download_attempts + 1))
-    echo "[WARN] Download failed. Retry $download_attempts/$MAX_DOWNLOAD_RETRIES in $RETRY_DELAY s..."
-    sleep $RETRY_DELAY
-done
-
-if [[ ! -x "$BIN_PATH" ]]; then
-    echo "[ERROR] Could not download or make EarnApp binary executable."
-    exit 1
-fi
-
-# --------------------------
-# Configure EarnApp
-# --------------------------
-echo "[INFO] Writing EARNAPP_UUID and initializing config..."
 echo -n "$EARNAPP_UUID" > "$CONFIG_DIR/uuid"
 touch "$CONFIG_DIR/status"
 chmod 600 "$CONFIG_DIR/"*
 
 # --------------------------
-# Switch to non-root user
+# Ensure non-root user
 # --------------------------
+if ! id earnappuser &>/dev/null; then
+    useradd -m earnappuser
+fi
+chown -R earnappuser:earnappuser "$APP_DIR" "$CONFIG_DIR"
+export HOME=/home/earnappuser
+
 exec_as_user() {
     if [[ $(id -u) -eq 0 ]]; then
         exec gosu earnappuser "$@"
@@ -123,11 +53,29 @@ exec_as_user() {
 }
 
 # --------------------------
-# Run EarnApp with crash handling
+# Download EarnApp if missing
 # --------------------------
-echo "[INFO] Starting EarnApp. Will retry if it crashes..."
+if [[ ! -x "$BIN_PATH" ]]; then
+    echo "[INFO] Downloading EarnApp..."
+    ARCH=$(uname -m)
+    VERSION=$(curl -fsSL $INSTALLER_URL | grep VERSION= | cut -d'"' -f2)
+    PRODUCT="earnapp"
+    case "$ARCH" in
+        x86_64|amd64) FILE="$PRODUCT-x64-$VERSION" ;;
+        armv6l|armv7l) FILE="$PRODUCT-arm7l-$VERSION" ;;
+        aarch64|arm64) FILE="$PRODUCT-aarch64-$VERSION" ;;
+        *) echo "[ERROR] Unsupported arch: $ARCH"; exit 1 ;;
+    esac
+    curl -fL "$CDN_BASE/$FILE" -o "$BIN_PATH"
+    chmod +x "$BIN_PATH"
+    echo "[INFO] EarnApp downloaded."
+fi
+
+# --------------------------
+# Run EarnApp with retry loop
+# --------------------------
+echo "[INFO] Starting EarnApp..."
 while true; do
-    echo "[INFO] Executing EarnApp..."
     exec_as_user "$BIN_PATH" run || {
         echo "[WARN] EarnApp crashed. Retrying in $RETRY_DELAY seconds..."
         sleep $RETRY_DELAY
