@@ -1,24 +1,51 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ---- Config ----
+# --------------------------
+# Config
+# --------------------------
 INSTALLER_URL="https://brightdata.com/static/earnapp/install.sh"
 CDN_BASE="https://cdn-earnapp.b-cdn.net/static"
 APP_DIR="/opt/earnapp"
 BIN_PATH="$APP_DIR/earnapp"
 CONFIG_DIR="/etc/earnapp"
-RETRY_DELAY=5   # seconds between retries for download/crash
-MAX_DOWNLOAD_RETRIES=5
+RETRY_DELAY=5           # Seconds between retries for download or crashes
+MAX_DOWNLOAD_RETRIES=5  # Max attempts for download/version fetch
 
-# ---- Validation ----
-if [[ -z "${EARNAPP_UUID:-}" ]]; then
-  echo "[ERROR] EARNAPP_UUID environment variable is not set!"
-  exit 1
+# --------------------------
+# Debug Mode
+# --------------------------
+if [[ "${DEBUG_MODE:-}" == "1" ]]; then
+    echo "[INFO] DEBUG_MODE enabled, launching interactive shell..."
+    exec bash
 fi
 
+# --------------------------
+# Check required environment variables
+# --------------------------
+if [[ -z "${EARNAPP_UUID:-}" ]]; then
+    echo "[ERROR] EARNAPP_UUID environment variable is not set!"
+    echo "Set it via '-e EARNAPP_UUID=your-uuid' when running the container."
+    exit 1
+fi
+
+# --------------------------
+# Setup directories
+# --------------------------
 mkdir -p "$APP_DIR" "$CONFIG_DIR"
 
-# ---- Fetch EarnApp version ----
+# --------------------------
+# Create non-root user
+# --------------------------
+if ! id earnappuser &>/dev/null; then
+    useradd -m earnappuser
+fi
+chown -R earnappuser:earnappuser "$APP_DIR" "$CONFIG_DIR"
+export HOME="/home/earnappuser"
+
+# --------------------------
+# Fetch EarnApp version
+# --------------------------
 echo "[INFO] Fetching EarnApp version info..."
 version_attempts=0
 while [[ $version_attempts -lt $MAX_DOWNLOAD_RETRIES ]]; do
@@ -39,7 +66,9 @@ if [[ -z "$VERSION" ]]; then
     exit 1
 fi
 
-# ---- Determine architecture ----
+# --------------------------
+# Determine architecture
+# --------------------------
 ARCH=$(uname -m)
 PRODUCT="earnapp"
 case "$ARCH" in
@@ -52,7 +81,9 @@ case "$ARCH" in
         ;;
 esac
 
-# ---- Download binary ----
+# --------------------------
+# Download EarnApp binary
+# --------------------------
 DOWNLOAD_URL="$CDN_BASE/$FILE"
 echo "[INFO] Downloading EarnApp binary for $ARCH from $DOWNLOAD_URL..."
 download_attempts=0
@@ -72,17 +103,32 @@ if [[ ! -x "$BIN_PATH" ]]; then
     exit 1
 fi
 
-# ---- Configure EarnApp ----
+# --------------------------
+# Configure EarnApp
+# --------------------------
 echo "[INFO] Writing EARNAPP_UUID and initializing config..."
 echo -n "$EARNAPP_UUID" > "$CONFIG_DIR/uuid"
 touch "$CONFIG_DIR/status"
 chmod 600 "$CONFIG_DIR/"*
 
-# ---- Run EarnApp in loop with crash handling ----
+# --------------------------
+# Switch to non-root user
+# --------------------------
+exec_as_user() {
+    if [[ $(id -u) -eq 0 ]]; then
+        exec gosu earnappuser "$@"
+    else
+        exec "$@"
+    fi
+}
+
+# --------------------------
+# Run EarnApp with crash handling
+# --------------------------
 echo "[INFO] Starting EarnApp. Will retry if it crashes..."
 while true; do
     echo "[INFO] Executing EarnApp..."
-    "$BIN_PATH" run || {
+    exec_as_user "$BIN_PATH" run || {
         echo "[WARN] EarnApp crashed. Retrying in $RETRY_DELAY seconds..."
         sleep $RETRY_DELAY
     }
