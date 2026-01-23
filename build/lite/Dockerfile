@@ -8,7 +8,7 @@ ENV CONFIG_DIR=/etc/earnapp
 # --------------------------
 # Install minimal dependencies
 # --------------------------
-RUN apt-get update && apt-get install -y wget && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 # --------------------------
 # Fake hostnamectl for EarnApp
