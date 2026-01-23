@@ -36,29 +36,12 @@ touch "$CONFIG_DIR/status"
 chmod 600 "$CONFIG_DIR/"*
 
 # --------------------------
-# Ensure non-root user
-# --------------------------
-if ! id earnappuser &>/dev/null; then
-    useradd -m earnappuser
-fi
-chown -R earnappuser:earnappuser "$APP_DIR" "$CONFIG_DIR"
-export HOME=/home/earnappuser
-
-exec_as_user() {
-    if [[ $(id -u) -eq 0 ]]; then
-        exec gosu earnappuser "$@"
-    else
-        exec "$@"
-    fi
-}
-
-# --------------------------
 # Download EarnApp if missing
 # --------------------------
 if [[ ! -x "$BIN_PATH" ]]; then
     echo "[INFO] Downloading EarnApp..."
     ARCH=$(uname -m)
-    VERSION=$(curl -fsSL $INSTALLER_URL | grep VERSION= | cut -d'"' -f2)
+    VERSION=$(curl -fsSL "$INSTALLER_URL" | grep VERSION= | cut -d'"' -f2)
     PRODUCT="earnapp"
     case "$ARCH" in
         x86_64|amd64) FILE="$PRODUCT-x64-$VERSION" ;;
@@ -76,7 +59,7 @@ fi
 # --------------------------
 echo "[INFO] Starting EarnApp..."
 while true; do
-    exec_as_user "$BIN_PATH" run || {
+    "$BIN_PATH" run || {
         echo "[WARN] EarnApp crashed. Retrying in $RETRY_DELAY seconds..."
         sleep $RETRY_DELAY
     }
