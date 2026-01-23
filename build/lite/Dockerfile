@@ -1,61 +1,67 @@
 # --------------------------
-# Stage 1: Build stage
+# Stage 1: Builder
 # --------------------------
-FROM debian:stable-slim AS builder
+FROM --platform=$BUILDPLATFORM debian:bookworm-slim AS builder
+
+ARG TARGETARCH
+ARG EARNAPP_VERSION=""  # Optional: hardcode a version if you want
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV APP_DIR=/opt/earnapp
 ENV BIN_PATH=$APP_DIR/earnapp
+ENV INSTALLER_URL=https://brightdata.com/static/earnapp/install.sh
+ENV CDN_BASE=https://cdn-earnapp.b-cdn.net/static
 
-# Install curl only in build stage
+# Install build dependencies
 RUN apt-get update && \
-    apt-get install -y curl && \
+    apt-get install -y curl ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-WORKDIR $APP_DIR
+RUN mkdir -p $APP_DIR
 
-# Download EarnApp binary
-ARG EARNAPP_UUID
-ENV EARNAPP_UUID=${EARNAPP_UUID:-dummy}
-
-RUN ARCH=$(uname -m) && \
-    VERSION=$(curl -fsSL https://brightdata.com/static/earnapp/install.sh | grep VERSION= | cut -d'"' -f2) && \
-    PRODUCT="earnapp" && \
-    case "$ARCH" in \
-        x86_64|amd64) FILE="$PRODUCT-x64-$VERSION" ;; \
-        armv6l|armv7l) FILE="$PRODUCT-arm7l-$VERSION" ;; \
-        aarch64|arm64) FILE="$PRODUCT-aarch64-$VERSION" ;; \
-        *) echo "[ERROR] Unsupported arch: $ARCH"; exit 1 ;; \
+# Fetch version if not provided
+RUN if [ -z "$EARNAPP_VERSION" ]; then \
+        export EARNAPP_VERSION=$(curl -fsSL $INSTALLER_URL | grep VERSION= | cut -d'"' -f2); \
+    else \
+        export EARNAPP_VERSION=$EARNAPP_VERSION; \
+    fi && \
+    echo "[INFO] Installing EarnApp version $EARNAPP_VERSION..." && \
+    case "$TARGETARCH" in \
+        amd64) FILE="earnapp-x64-$EARNAPP_VERSION" ;; \
+        arm64) FILE="earnapp-aarch64-$EARNAPP_VERSION" ;; \
+        arm/v7) FILE="earnapp-arm7l-$EARNAPP_VERSION" ;; \
+        *) echo "[ERROR] Unsupported architecture: $TARGETARCH"; exit 1 ;; \
     esac && \
-    curl -fL "https://cdn-earnapp.b-cdn.net/static/$FILE" -o "$BIN_PATH" && \
-    chmod +x "$BIN_PATH"
+    curl -fL "$CDN_BASE/$FILE" -o "$BIN_PATH" && \
+    chmod +x "$BIN_PATH" && \
+    echo "[INFO] EarnApp binary downloaded for $TARGETARCH."
 
 # --------------------------
-# Stage 2: Final runtime
+# Stage 2: Runtime
 # --------------------------
-FROM debian:stable-slim
+FROM debian:bookworm-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV APP_DIR=/opt/earnapp
 ENV BIN_PATH=$APP_DIR/earnapp
 ENV CONFIG_DIR=/etc/earnapp
 
-# Minimal runtime packages
+# Minimal runtime dependencies
 RUN apt-get update && \
-    apt-get install -y curl && \
+    apt-get install -y ca-certificates curl && \
     rm -rf /var/lib/apt/lists/*
 
-# Fake hostnamectl
+# Fake hostnamectl for EarnApp
 RUN echo -e '#!/bin/sh\nhostname' > /usr/bin/hostnamectl && chmod +x /usr/bin/hostnamectl
 
-# Fake lsb_release
-RUN echo -e '#!/bin/sh\necho "Distributor ID: Ubuntu"\necho "Description: Ubuntu 24.04"\necho "Release: 24.04"\necho "Codename: lunar"' \
+# Fake lsb_release for EarnApp
+RUN echo -e '#!/bin/sh\necho "Distributor ID: Debian"\necho "Description: Debian Bookworm"\necho "Release: 12"\necho "Codename: bookworm"' \
     > /usr/bin/lsb_release && chmod +x /usr/bin/lsb_release
 
 # Create directories
 RUN mkdir -p $APP_DIR $CONFIG_DIR
 
-# Copy binary from builder
+# Copy EarnApp binary from builder
 COPY --from=builder $BIN_PATH $BIN_PATH
 RUN chmod +x $BIN_PATH
 
@@ -65,7 +71,7 @@ WORKDIR $APP_DIR
 COPY src/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Volume for persistent config
+# Persistent config
 VOLUME ["/etc/earnapp"]
 
 ENTRYPOINT ["/entrypoint.sh"]
