@@ -1,7 +1,7 @@
 # --------------------------
 # Stage 1: Build stage
 # --------------------------
-FROM ubuntu:24.04-slim AS builder
+FROM debian:stable-slim AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV APP_DIR=/opt/earnapp
@@ -33,7 +33,7 @@ RUN ARCH=$(uname -m) && \
 # --------------------------
 # Stage 2: Final runtime
 # --------------------------
-FROM ubuntu:24.04-slim
+FROM debian:stable-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV APP_DIR=/opt/earnapp
