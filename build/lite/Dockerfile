@@ -1,22 +1,29 @@
 FROM ubuntu:24.04@sha256:cd1dba651b3080c3686ecf4e3c4220f026b521fb76978881737d24f200828b2b
 
-ENV container=docker
 ENV DEBIAN_FRONTEND=noninteractive
+ENV container=docker
 
-RUN apt update && apt install -y wget && apt clean && apt autoremove -y && rm -rf /**var**/lib/apt/lists/*
+# Install required runtime dependencies
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    curl \
+    file \
+    procps \
+ && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+# Create directories
+RUN mkdir -p /opt/earnapp /etc/earnapp
 
-COPY src src
-#RUN dos2unix src/*
-RUN cp /app/src/install.sh /usr/bin/install
-RUN echo -e "#\!/bin/bash \n echo \"$(lsb_release -a)\"" > /usr/bin/lsb_release
-RUN echo -e "#\!/bin/bash \n echo \"$(hostnamectl)\"" > /usr/bin/hostnamectl
-RUN chmod a+x /usr/bin/install
-RUN chmod a+x /usr/bin/hostnamectl /usr/bin/lsb_release
+# Copy unified entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-RUN bash /app/src/setup.sh && rm -r /app/src
+# Persist EarnApp config
+VOLUME ["/etc/earnapp"]
 
-VOLUME [ "/etc/earnapp" ]
+# Healthcheck: container is healthy if earnapp is running
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD pgrep earnapp > /dev/null || exit 1
 
-CMD ["install"]
+# Run as PID 1
+ENTRYPOINT ["/entrypoint.sh"]
