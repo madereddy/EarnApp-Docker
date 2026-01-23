@@ -3,7 +3,7 @@ FROM ubuntu:24.04@sha256:cd1dba651b3080c3686ecf4e3c4220f026b521fb76978881737d24f
 ENV container=docker
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt update && apt install -y wget && apt clean && apt autoremove -y && rm -rf /**var**/lib/apt/lists/*
+RUN apt install -y wget && rm -rf /**var**/lib/apt/lists/*
 
 WORKDIR /app
 
