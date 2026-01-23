@@ -7,13 +7,12 @@ CDN_BASE="https://cdn-earnapp.b-cdn.net/static"
 APP_DIR="/opt/earnapp"
 BIN_PATH="$APP_DIR/earnapp"
 CONFIG_DIR="/etc/earnapp"
-RETRY_DELAY=5   # seconds between retries for binary or crashes
+RETRY_DELAY=5   # seconds between retries for download/crash
 MAX_DOWNLOAD_RETRIES=5
 
 # ---- Validation ----
 if [[ -z "${EARNAPP_UUID:-}" ]]; then
-  echo "ERROR: EARNAPP_UUID environment variable is not set!"
-  echo "Set it via '-e EARNAPP_UUID=your-uuid' when running the container"
+  echo "[ERROR] EARNAPP_UUID environment variable is not set!"
   exit 1
 fi
 
@@ -21,10 +20,9 @@ mkdir -p "$APP_DIR" "$CONFIG_DIR"
 
 # ---- Fetch EarnApp version ----
 echo "[INFO] Fetching EarnApp version info..."
-curl_opts="-fsSL"
 version_attempts=0
 while [[ $version_attempts -lt $MAX_DOWNLOAD_RETRIES ]]; do
-    if curl $curl_opts "$INSTALLER_URL" -o /tmp/earnapp_install.sh; then
+    if curl -fsSL "$INSTALLER_URL" -o /tmp/earnapp_install.sh; then
         VERSION=$(grep -E '^VERSION=' /tmp/earnapp_install.sh | cut -d'"' -f2)
         if [[ -n "$VERSION" ]]; then
             echo "[INFO] Detected EarnApp version: $VERSION"
@@ -57,12 +55,11 @@ esac
 # ---- Download binary ----
 DOWNLOAD_URL="$CDN_BASE/$FILE"
 echo "[INFO] Downloading EarnApp binary for $ARCH from $DOWNLOAD_URL..."
-
 download_attempts=0
 while [[ $download_attempts -lt $MAX_DOWNLOAD_RETRIES ]]; do
     if curl -fL "$DOWNLOAD_URL" -o "$BIN_PATH"; then
         chmod +x "$BIN_PATH"
-        echo "[INFO] EarnApp binary downloaded and marked executable."
+        echo "[INFO] EarnApp binary downloaded and executable."
         break
     fi
     download_attempts=$((download_attempts + 1))
@@ -85,7 +82,7 @@ chmod 600 "$CONFIG_DIR/"*
 echo "[INFO] Starting EarnApp. Will retry if it crashes..."
 while true; do
     echo "[INFO] Executing EarnApp..."
-    exec "$BIN_PATH" run || {
+    "$BIN_PATH" run || {
         echo "[WARN] EarnApp crashed. Retrying in $RETRY_DELAY seconds..."
         sleep $RETRY_DELAY
     }
