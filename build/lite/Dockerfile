@@ -15,7 +15,8 @@ RUN apt-get update && apt-get install -y \
 RUN mkdir -p /opt/earnapp /etc/earnapp
 
 # Copy unified entrypoint script
-COPY entrypoint.sh /entrypoint.sh
+# Copy unified entrypoint script
+COPY src/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Persist EarnApp config
