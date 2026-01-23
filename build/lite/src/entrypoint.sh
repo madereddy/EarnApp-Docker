@@ -9,7 +9,6 @@ CDN_BASE="https://cdn-earnapp.b-cdn.net/static"
 APP_DIR="/opt/earnapp"
 BIN_PATH="$APP_DIR/earnapp"
 CONFIG_DIR="/etc/earnapp"
-RETRY_DELAY=5
 
 # --------------------------
 # Debug mode
@@ -28,7 +27,7 @@ if [[ -z "${EARNAPP_UUID:-}" ]]; then
 fi
 
 # --------------------------
-# Prepare directories and files
+# Prepare directories and config files
 # --------------------------
 mkdir -p "$APP_DIR" "$CONFIG_DIR"
 echo -n "$EARNAPP_UUID" > "$CONFIG_DIR/uuid"
@@ -47,7 +46,7 @@ if [[ ! -x "$BIN_PATH" ]]; then
         x86_64|amd64) FILE="$PRODUCT-x64-$VERSION" ;;
         armv6l|armv7l) FILE="$PRODUCT-arm7l-$VERSION" ;;
         aarch64|arm64) FILE="$PRODUCT-aarch64-$VERSION" ;;
-        *) echo "[ERROR] Unsupported arch: $ARCH"; exit 1 ;;
+        *) echo "[ERROR] Unsupported architecture: $ARCH"; exit 1 ;;
     esac
     curl -fL "$CDN_BASE/$FILE" -o "$BIN_PATH"
     chmod +x "$BIN_PATH"
@@ -55,12 +54,13 @@ if [[ ! -x "$BIN_PATH" ]]; then
 fi
 
 # --------------------------
-# Run EarnApp with retry loop
+# Start EarnApp in background
 # --------------------------
 echo "[INFO] Starting EarnApp..."
-while true; do
-    "$BIN_PATH" start || {
-        echo "[WARN] EarnApp crashed. Retrying in $RETRY_DELAY seconds..."
-        sleep $RETRY_DELAY
-    }
-done
+"$BIN_PATH" start
+
+# --------------------------
+# Keep container alive
+# --------------------------
+echo "[INFO] EarnApp started. Container will remain running..."
+tail -f /dev/null
