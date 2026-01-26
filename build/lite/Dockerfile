@@ -19,4 +19,5 @@ RUN bash /app/src/setup.sh && rm -r /app/src
 
 VOLUME [ "/etc/earnapp" ]
 
-CMD ["install"]
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["start"]
