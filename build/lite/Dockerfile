@@ -76,6 +76,5 @@ RUN chmod +x /entrypoint.sh
 # Persistent configuration
 VOLUME ["/etc/earnapp"]
 
-# Entrypoint
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["run"]
+CMD ["start"]
