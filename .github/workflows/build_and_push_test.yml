@@ -1,7 +1,11 @@
 name: Build and Push to Dockerhub test
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [ "test" ]
+
+permissions:
+   contents: read
 
 jobs:
   build:
