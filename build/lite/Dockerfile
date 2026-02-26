@@ -7,8 +7,10 @@ ARG EARNAPP_VERSION=""
 ENV DEBIAN_FRONTEND=noninteractive
 ENV APP_DIR=/app/src/
 ENV BIN_PATH=/usr/bin/earnapp
+ENV CONFIG_DIR=/etc/earnapp
 ENV INSTALLER_URL=https://brightdata.com/static/earnapp/install.sh
 ENV CDN_BASE=https://cdn-earnapp.b-cdn.net/static
+ENV MALLOC_ARENA_MAX=2
 
 # Minimal dependencies to download binary
 RUN apt-get update && apt-get install -y curl ca-certificates && rm -rf /var/lib/apt/lists/* && apt-get clean && apt-get autoremove --purge

@@ -54,11 +54,35 @@ if [[ ! -x "$BIN_PATH" ]]; then
 fi
 
 # --------------------------
-# Start EarnApp in background
+# Start EarnApp with auto-restart loop
 # --------------------------
 echo "[INFO] Starting EarnApp..."
-"$BIN_PATH" stop
-sleep 2
-"$BIN_PATH" start
-sleep 2
-"$BIN_PATH" run
+"$BIN_PATH" stop 2>/dev/null || true
+sleep 1
+
+backoff=5
+MAX_BACKOFF=300
+
+while true; do
+    "$BIN_PATH" start 2>/dev/null || true
+    sleep 2
+    
+    # Run in foreground, will block until exit
+    start_time=$(date +%s)
+    "$BIN_PATH" run || true
+    run_duration=$(( $(date +%s) - start_time ))
+    
+    # If ran for >60s, it was stable - reset backoff
+    if [[ $run_duration -gt 60 ]]; then
+        backoff=5
+        echo "[INFO] EarnApp exited after ${run_duration}s, restarting in ${backoff}s..."
+    else
+        echo "[WARN] EarnApp crashed after ${run_duration}s, backing off ${backoff}s before restart..."
+        sleep "$backoff"
+        backoff=$((backoff * 2))
+        [[ $backoff -gt $MAX_BACKOFF ]] && backoff=$MAX_BACKOFF
+    fi
+    
+    "$BIN_PATH" stop 2>/dev/null || true
+    sleep 1
+done
