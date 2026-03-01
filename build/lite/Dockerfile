@@ -12,18 +12,15 @@ ENV INSTALLER_URL=https://brightdata.com/static/earnapp/install.sh
 ENV CDN_BASE=https://cdn-earnapp.b-cdn.net/static
 ENV MALLOC_ARENA_MAX=2
 
-# Minimal dependencies to download binary
-RUN apt-get update && apt-get install -y curl ca-certificates && rm -rf /var/lib/apt/lists/* && apt-get clean && apt-get autoremove --purge
-
-# Create directories
-RUN mkdir -p $APP_DIR $CONFIG_DIR
-
-# Fetch latest version if not specified
-RUN if [ -z "$EARNAPP_VERSION" ]; then \
+# Install curl, download binary, then remove curl to keep image lean (~15MB saved)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && mkdir -p $APP_DIR $CONFIG_DIR \
+    && if [ -z "$EARNAPP_VERSION" ]; then \
         export EARNAPP_VERSION=$(curl -fsSL $INSTALLER_URL | grep VERSION= | cut -d'"' -f2); \
-    fi && \
-    echo "[INFO] Installing EarnApp version $EARNAPP_VERSION for arch $TARGETARCH/$TARGETVARIANT" && \
-    case "$TARGETARCH" in \
+    fi \
+    && echo "[INFO] Installing EarnApp version $EARNAPP_VERSION for arch $TARGETARCH/$TARGETVARIANT" \
+    && case "$TARGETARCH" in \
         amd64) FILE="earnapp-x64-$EARNAPP_VERSION" ;; \
         arm64) FILE="earnapp-aarch64-$EARNAPP_VERSION" ;; \
         arm) \
@@ -32,10 +29,12 @@ RUN if [ -z "$EARNAPP_VERSION" ]; then \
                 *) echo "[ERROR] Unsupported ARM variant: $TARGETVARIANT"; exit 1 ;; \
             esac ;; \
         *) echo "[ERROR] Unsupported architecture: $TARGETARCH"; exit 1 ;; \
-    esac && \
-    curl -fL "$CDN_BASE/$FILE" -o "$BIN_PATH" && \
-    chmod +x "$BIN_PATH" && \
-    echo "[INFO] EarnApp binary downloaded."
+    esac \
+    && curl -fL "$CDN_BASE/$FILE" -o "$BIN_PATH" \
+    && chmod +x "$BIN_PATH" \
+    && echo "[INFO] EarnApp binary downloaded." \
+    && apt-get purge -y --auto-remove curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Fake hostnamectl for EarnApp
 RUN echo -e '#!/bin/sh\nhostname' > /usr/bin/hostnamectl && chmod +x /usr/bin/hostnamectl
