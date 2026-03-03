@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -26,6 +28,10 @@ jobs:
         run: |
           VERSION=$(wget -qO- https://brightdata.com/static/earnapp/install.sh \
             | grep VERSION= | cut -d'"' -f2)
+          if [ -z "$VERSION" ]; then
+            echo "[ERROR] Failed to resolve EarnApp version"
+            exit 1
+          fi
           echo "value=${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Build & Push (master)
@@ -36,7 +42,10 @@ jobs:
           file: build/lite/Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64,linux/arm/v7
-          build-args: EARNAPP_VERSION=${{ steps.version.outputs.value }}
+          build-args: |
+            EARNAPP_VERSION=${{ steps.version.outputs.value }}
+            BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+            VCS_REF=${{ github.sha }}
           tags: |
             madereddy/earnapp:latest
             madereddy/earnapp:${{ steps.version.outputs.value }}
@@ -49,7 +58,12 @@ jobs:
           file: build/lite/Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64,linux/arm/v7
-          build-args: EARNAPP_VERSION=${{ steps.version.outputs.value }}
+          build-args: |
+            EARNAPP_VERSION=${{ steps.version.outputs.value }}
+            BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+            VCS_REF=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.description=WARNING: test build, not for production use
           tags: |
             madereddy/earnapp:test
 
