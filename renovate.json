@@ -17,9 +17,5 @@
       "automergeType": "pr",
       "platformAutomerge": true
     }
-  ],
-  "postUpdateOptions": [
-      "gomodTidy",
-      "gomodNoMassage"
   ]
 }
