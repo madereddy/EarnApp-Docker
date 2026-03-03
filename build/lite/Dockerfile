@@ -20,16 +20,12 @@ RUN apt-get update \
     && if [ -z "$EARNAPP_VERSION" ]; then \
         EARNAPP_VERSION=$(curl -fsSL "$INSTALLER_URL" | grep VERSION= | cut -d'"' -f2); \
     fi \
-    && echo "[INFO] Installing EarnApp $EARNAPP_VERSION for $TARGETARCH/$TARGETVARIANT" \
-    && case "$TARGETARCH" in \
-        amd64) FILE="earnapp-x64-$EARNAPP_VERSION" ;; \
-        arm64) FILE="earnapp-aarch64-$EARNAPP_VERSION" ;; \
-        arm) \
-            case "$TARGETVARIANT" in \
-                v7|v6) FILE="earnapp-arm7l-$EARNAPP_VERSION" ;; \
-                *) echo "[ERROR] Unsupported ARM variant: $TARGETVARIANT"; exit 1 ;; \
-            esac ;; \
-        *) echo "[ERROR] Unsupported architecture: $TARGETARCH"; exit 1 ;; \
+    && echo "[INFO] Installing EarnApp $EARNAPP_VERSION for $TARGETPLATFORM" \
+    && case "$TARGETPLATFORM" in \
+        linux/amd64)  FILE="earnapp-x64-$EARNAPP_VERSION" ;; \
+        linux/arm64)  FILE="earnapp-aarch64-$EARNAPP_VERSION" ;; \
+        linux/arm/v7) FILE="earnapp-arm7l-$EARNAPP_VERSION" ;; \
+        *) echo "[ERROR] Unsupported platform: $TARGETPLATFORM"; exit 1 ;; \
     esac \
     && curl -fL "$CDN_BASE/$FILE" -o "$BIN_PATH" \
     && chmod +x "$BIN_PATH" \
