@@ -17,14 +17,6 @@ if [[ "${DEBUG_MODE:-}" == "1" ]]; then
 fi
 
 # --------------------------
-# Validate UUID
-# --------------------------
-if [[ -z "${EARNAPP_UUID:-}" ]]; then
-    echo "[ERROR] EARNAPP_UUID not set!"
-    exit 1
-fi
-
-# --------------------------
 # Validate binary
 # --------------------------
 if [[ ! -x "$BIN_PATH" ]]; then
@@ -36,9 +28,31 @@ fi
 # Prepare directories and config files
 # --------------------------
 mkdir -p "$APP_DIR" "$CONFIG_DIR"
-echo -n "$EARNAPP_UUID" > "$CONFIG_DIR/uuid"
 touch "$CONFIG_DIR/status"
+
+# --------------------------
+# UUID handling
+# --------------------------
+if [[ -z "${EARNAPP_UUID:-}" ]]; then
+    echo "[WARN] EARNAPP_UUID not set — EarnApp will generate its own UUID."
+    echo "[WARN] Ensure /etc/earnapp is mounted as a volume or your UUID will be lost on restart."
+else
+    echo -n "$EARNAPP_UUID" > "$CONFIG_DIR/uuid"
+fi
+
 chmod 600 "$CONFIG_DIR/"*
+
+# --------------------------
+# Show UUID and registration link
+# --------------------------
+echo ""
+echo "------------------------------------------------------------"
+DEVICE_ID=$("$BIN_PATH" showid 2>/dev/null || cat "$CONFIG_DIR/uuid" 2>/dev/null || echo "unknown")
+echo "[INFO] Device ID: $DEVICE_ID"
+echo "[INFO] If this device is not yet registered, visit:"
+echo "[INFO] https://earnapp.com/r/$DEVICE_ID"
+echo "------------------------------------------------------------"
+echo ""
 
 # --------------------------
 # Start EarnApp with auto-restart loop

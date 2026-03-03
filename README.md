@@ -19,9 +19,34 @@ Unofficial containerized version of BrightData's EarnApp with **Debian slim** ba
 
 ---
 
-## How to Get UUID
+## Quick Start
 
-The UUID must be 32 characters of lowercase letters and numbers, prefixed with `sdk-node-`. You can generate one with:
+EarnApp can either generate its own UUID automatically, or you can provide one manually.
+
+> **Important:** Always mount `/etc/earnapp` as a volume. Without it, your UUID will be lost on every container restart, creating a new unregistered device on your account each time.
+
+### Option 1 — Let EarnApp generate the UUID (recommended for new installs)
+
+```bash
+docker run -d \
+  --name earnapp \
+  -v /etc/earnapp:/etc/earnapp \
+  madereddy/earnapp:latest
+```
+
+### Option 2 — Provide your own UUID
+
+```bash
+docker run -d \
+  --name earnapp \
+  -e EARNAPP_UUID="sdk-node-YOUR32CHARSTRING" \
+  -v /etc/earnapp:/etc/earnapp \
+  madereddy/earnapp:latest
+```
+
+### Generating a UUID manually
+
+If you prefer to generate your own UUID:
 
 ```bash
 echo -n sdk-node- && head -c 1024 /dev/urandom | md5sum | tr -d ' -'
@@ -29,35 +54,40 @@ echo -n sdk-node- && head -c 1024 /dev/urandom | md5sum | tr -d ' -'
 
 *Example output:* `sdk-node-0123456789abcdeffedcba9876543210`
 
-Before registering your device, start the container first with your UUID set, then register using:
+---
+
+## Registering Your Device
+
+When the container starts, it will print your Device ID and registration link to the logs:
 
 ```
-https://earnapp.com/r/YOUR_UUID
+------------------------------------------------------------
+[INFO] Device ID: sdk-node-0123456789abcdeffedcba9876543210
+[INFO] If this device is not yet registered, visit:
+[INFO] https://earnapp.com/r/sdk-node-0123456789abcdeffedcba9876543210
+------------------------------------------------------------
 ```
 
-*Example:* `https://earnapp.com/r/sdk-node-0123456789abcdeffedcba9876543210`
+1. Start the container first
+2. Check the logs for your registration link: `docker logs earnapp`
+3. Open the link in your browser and assign the device to your account
+4. You can also retrieve your Device ID at any time with:
+
+```bash
+docker exec earnapp earnapp showid
+```
 
 ---
 
-## Running the Container
-
-```bash
-docker run -d \
-  --name earnapp \
-  -e EARNAPP_UUID="YOUR_EARNAPP_UUID" \
-  -v /etc/earnapp:/etc/earnapp \
-  madereddy/earnapp:latest
-```
-
-### Docker Compose
+## Docker Compose
 
 ```yaml
 services:
   earnapp:
     container_name: earnapp
-    image: madereddy/earnapp:latest
+    image: madereddy/earnapp
     environment:
-      - EARNAPP_UUID=<YOUR_EARNAPP_UUID>
+      - EARNAPP_UUID=<YOUR_EARNAPP_UUID>  # optional - remove to auto-generate
     restart: unless-stopped
     volumes:
       - /etc/earnapp:/etc/earnapp
@@ -71,7 +101,7 @@ services:
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `EARNAPP_UUID` | Yes | - | Your EarnApp node UUID (`sdk-node-...`) |
+| `EARNAPP_UUID` | No | auto-generated | Your EarnApp node UUID (`sdk-node-...`). If not set, EarnApp will generate one. Make sure `/etc/earnapp` is mounted as a volume. |
 | `DEBUG_MODE` | No | `0` | Set to `1` to drop into a bash shell instead of starting EarnApp. Useful for troubleshooting. |
 
 The container stores the following files in `/etc/earnapp`:
@@ -80,6 +110,36 @@ The container stores the following files in `/etc/earnapp`:
 |------|-------------|
 | `uuid` | Your EarnApp UUID |
 | `status` | Runtime status used by the healthcheck |
+
+---
+
+## EarnApp Commands
+
+You can run EarnApp commands directly inside the container:
+
+| Command | Description |
+|---------|-------------|
+| `earnapp showid` | Show the device UUID |
+| `earnapp register` | Print the registration link to assign the device to your account |
+| `earnapp status` | Check the status of the running EarnApp |
+| `earnapp start` | Start EarnApp as a background process |
+| `earnapp stop` | Stop the running EarnApp process |
+| `earnapp upgrade` | Update EarnApp to the latest version |
+| `earnapp uninstall` | Remove EarnApp from the device |
+
+Run them with:
+
+```bash
+docker exec earnapp earnapp <command>
+```
+
+For example:
+
+```bash
+docker exec earnapp earnapp status
+docker exec earnapp earnapp showid
+docker exec earnapp earnapp register
+```
 
 ---
 
@@ -94,6 +154,9 @@ docker logs -f earnapp
 Sample output:
 
 ```
+[INFO] Device ID: sdk-node-0123456789abcdeffedcba9876543210
+[INFO] If this device is not yet registered, visit:
+[INFO] https://earnapp.com/r/sdk-node-0123456789abcdeffedcba9876543210
 [INFO] Starting EarnApp...
 [INFO] EarnApp exited after 120s, restarting in 5s...
 [WARN] EarnApp crashed after 3s, backing off 5s before restart...
