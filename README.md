@@ -55,7 +55,7 @@ docker run -d \
 services:
   earnapp:
     container_name: earnapp
-    image: madereddy/earnapp
+    image: madereddy/earnapp:latest
     environment:
       - EARNAPP_UUID=<YOUR_EARNAPP_UUID>
     restart: unless-stopped
@@ -94,8 +94,9 @@ docker logs -f earnapp
 Sample output:
 
 ```
-Registered
-EarnApp is active (making money in the background)
+[INFO] Starting EarnApp...
+[INFO] EarnApp exited after 120s, restarting in 5s...
+[WARN] EarnApp crashed after 3s, backing off 5s before restart...
 ```
 
 ---
