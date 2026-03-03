@@ -1,0 +1,75 @@
+name: "Promote EarnApp Version to Master"
+
+on:
+  push:
+    branches:
+      - test
+    paths:
+      - ".earnapp-version"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: test
+
+      - name: Get version being promoted
+        id: version
+        run: echo "value=$(cat .earnapp-version)" >> $GITHUB_OUTPUT
+
+      - name: Get current master version
+        id: master
+        run: |
+          git fetch origin master
+          git show origin/master:.earnapp-version > .master-version 2>/dev/null || echo "0.0.0" > .master-version
+          echo "value=$(cat .master-version)" >> $GITHUB_OUTPUT
+
+      - name: Compare versions
+        id: compare
+        run: |
+          TEST_VERSION="${{ steps.version.outputs.value }}"
+          MASTER_VERSION="${{ steps.master.outputs.value }}"
+          echo "Test:   $TEST_VERSION"
+          echo "Master: $MASTER_VERSION"
+          if [ "$TEST_VERSION" != "$MASTER_VERSION" ]; then
+            echo "promote=true" >> $GITHUB_OUTPUT
+          else
+            echo "promote=false" >> $GITHUB_OUTPUT
+            echo "Master already has this version."
+          fi
+
+      - name: Wait 7 days then open PR into master
+        if: steps.compare.outputs.promote == 'true'
+        run: |
+          echo "Scheduling promotion in 7 days..."
+          # Record the promotion date
+          date -d "+7 days" +%Y-%m-%d > .promote-date
+          echo "Promotion scheduled for $(cat .promote-date)"
+
+      - name: Open PR into master
+        if: steps.compare.outputs.promote == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: master
+          branch: "promote/${{ steps.version.outputs.value }}"
+          commit-message: "chore: promote EarnApp ${{ steps.version.outputs.value }} to master"
+          title: "chore: promote EarnApp ${{ steps.version.outputs.value }} to master"
+          body: |
+            Promoting EarnApp `${{ steps.version.outputs.value }}` from `test` to `master`.
+
+            - **Version:** `${{ steps.version.outputs.value }}`
+            - **Tested on:** `test` branch
+            - **Merge after:** 7 days from test merge
+
+            > ⚠️ This PR was automatically created. Please verify the test build
+            > has been running successfully before merging.
+          labels: dependencies
+          reviewers: madereddy

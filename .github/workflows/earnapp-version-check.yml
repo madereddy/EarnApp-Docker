@@ -1,0 +1,85 @@
+name: "Check EarnApp Version"
+
+on:
+  schedule:
+    - cron: "0 9 * * *"  # Daily at 9am
+  workflow_dispatch:       # Allow manual trigger
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: test
+
+      - name: Get latest EarnApp version
+        id: latest
+        run: |
+          VERSION=$(wget -qO- https://brightdata.com/static/earnapp/install.sh \
+            | grep VERSION= | cut -d'"' -f2)
+          if [ -z "$VERSION" ]; then
+            echo "[ERROR] Failed to resolve EarnApp version"
+            exit 1
+          fi
+          echo "value=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Get current pinned version
+        id: current
+        run: |
+          if [ -f ".earnapp-version" ]; then
+            echo "value=$(cat .earnapp-version)" >> $GITHUB_OUTPUT
+          else
+            echo "${{ steps.latest.outputs.value }}" > .earnapp-version
+            echo "value=${{ steps.latest.outputs.value }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Compare versions
+        id: compare
+        run: |
+          LATEST="${{ steps.latest.outputs.value }}"
+          CURRENT="${{ steps.current.outputs.value }}"
+          echo "Current: $CURRENT"
+          echo "Latest:  $LATEST"
+          if [ "$LATEST" != "$CURRENT" ]; then
+            echo "update=true" >> $GITHUB_OUTPUT
+          else
+            echo "update=false" >> $GITHUB_OUTPUT
+            echo "Already up to date."
+          fi
+
+      - name: Update version file
+        if: steps.compare.outputs.update == 'true'
+        run: echo "${{ steps.latest.outputs.value }}" > .earnapp-version
+
+      - name: Open PR into test branch and auto-merge
+        if: steps.compare.outputs.update == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: test
+          branch: "earnapp-update/${{ steps.latest.outputs.value }}"
+          commit-message: "chore: bump EarnApp to ${{ steps.latest.outputs.value }}"
+          title: "chore: bump EarnApp ${{ steps.current.outputs.value }} → ${{ steps.latest.outputs.value }}"
+          body: |
+            EarnApp installer has a new version available.
+
+            - **Current:** `${{ steps.current.outputs.value }}`
+            - **Latest:** `${{ steps.latest.outputs.value }}`
+
+            This PR targets the `test` branch. If no issues are found, it will be
+            automatically promoted to `master` after 7 days.
+          labels: dependencies
+          reviewers: madereddy
+
+      - name: Auto-merge into test
+        if: steps.compare.outputs.update == 'true'
+        run: |
+          gh pr merge --auto --squash "earnapp-update/${{ steps.latest.outputs.value }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
