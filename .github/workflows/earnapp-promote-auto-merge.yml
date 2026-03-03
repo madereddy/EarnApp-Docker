@@ -1,0 +1,47 @@
+name: "Auto-merge Promotion to Master"
+
+on:
+  schedule:
+    - cron: "0 9 * * *"  # Check daily at 9am
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge-promotion:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: test
+
+      - name: Find open promotion PRs older than 7 days
+        id: find-pr
+        run: |
+          # Find open PRs targeting master with the promote/ prefix older than 7 days
+          PR=$(gh pr list \
+            --base master \
+            --state open \
+            --json number,title,createdAt,headRefName \
+            --jq '[.[] | select(.headRefName | startswith("promote/")) | select((now - (.createdAt | fromdateiso8601)) > 604800)] | first')
+
+          if [ -z "$PR" ] || [ "$PR" == "null" ]; then
+            echo "No promotion PRs ready to merge."
+            echo "ready=false" >> $GITHUB_OUTPUT
+          else
+            PR_NUMBER=$(echo $PR | jq -r '.number')
+            echo "Found PR #${PR_NUMBER} ready to merge."
+            echo "ready=true" >> $GITHUB_OUTPUT
+            echo "number=${PR_NUMBER}" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Auto-merge promotion PR
+        if: steps.find-pr.outputs.ready == 'true'
+        run: gh pr merge ${{ steps.find-pr.outputs.number }} --auto --squash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
