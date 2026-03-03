@@ -7,6 +7,7 @@ ARG INSTALLER_URL=https://brightdata.com/static/earnapp/install.sh
 ARG CDN_BASE=https://cdn-earnapp.b-cdn.net/static
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV TARGETPLATFORM=$TARGETPLATFORM
 ENV APP_DIR=/app/src/
 ENV BIN_PATH=/usr/bin/earnapp
 ENV CONFIG_DIR=/etc/earnapp
