@@ -3,12 +3,22 @@ FROM debian:stable-slim@sha256:85dfcffff3c1e193877f143d05eaba8ae7f3f95cb0a32e0bc
 ARG EARNAPP_VERSION=""
 ARG INSTALLER_URL=https://brightdata.com/static/earnapp/install.sh
 ARG CDN_BASE=https://cdn-earnapp.b-cdn.net/static
+ARG BUILD_DATE
+ARG VCS_REF
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV APP_DIR=/app/src/
 ENV BIN_PATH=/usr/bin/earnapp
 ENV CONFIG_DIR=/etc/earnapp
 ENV MALLOC_ARENA_MAX=2
+
+# Adding Labels for easier tracking of updates
+# Test labels gets updated during build
+LABEL org.opencontainers.image.created=$BUILD_DATE \
+      org.opencontainers.image.revision=$VCS_REF \
+      org.opencontainers.image.source="https://github.com/madereddy/EarnApp-Docker" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.description="Unofficial containerized EarnApp by BrightData"
 
 # Install curl, download binary, then remove curl to keep image lean (~15MB saved)
 # Kept CA Certs to reduce random tls errors
