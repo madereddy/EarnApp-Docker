@@ -57,7 +57,7 @@ jobs:
         if: steps.compare.outputs.update == 'true'
         run: echo "${{ steps.latest.outputs.value }}" > .earnapp-version
 
-      - name: Open PR into test branch and auto-merge
+      - name: Open PR into test branch
         if: steps.compare.outputs.update == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
@@ -65,15 +65,15 @@ jobs:
           base: test
           branch: "earnapp-update/${{ steps.latest.outputs.value }}"
           commit-message: "chore: bump EarnApp to ${{ steps.latest.outputs.value }}"
-          title: "chore: bump EarnApp ${{ steps.current.outputs.value }} → ${{ steps.latest.outputs.value }}"
+          title: "chore: bump EarnApp ${{ steps.current.outputs.value }} to ${{ steps.latest.outputs.value }}"
           body: |
             EarnApp installer has a new version available.
 
-            - **Current:** `${{ steps.current.outputs.value }}`
-            - **Latest:** `${{ steps.latest.outputs.value }}`
+            - Current: `${{ steps.current.outputs.value }}`
+            - Latest: `${{ steps.latest.outputs.value }}`
 
-            This PR targets the `test` branch. If no issues are found, it will be
-            automatically promoted to `master` after 7 days.
+            This PR targets the `test` branch. If the test build passes and no issues
+            are found, it will be automatically promoted to `master` after 7 days.
           labels: dependencies
           reviewers: madereddy
 

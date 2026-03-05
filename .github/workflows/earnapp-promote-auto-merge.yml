@@ -21,7 +21,6 @@ jobs:
       - name: Find open promotion PRs older than 7 days
         id: find-pr
         run: |
-          # Find open PRs targeting master with the promote/ prefix older than 7 days
           PR=$(gh pr list \
             --base master \
             --state open \
