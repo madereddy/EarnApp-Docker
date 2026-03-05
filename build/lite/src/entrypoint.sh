@@ -47,7 +47,15 @@ chmod 600 "$CONFIG_DIR/"*
 # --------------------------
 echo ""
 echo "------------------------------------------------------------"
-DEVICE_ID=$("$BIN_PATH" showid 2>/dev/null || cat "$CONFIG_DIR/uuid" 2>/dev/null || echo "unknown")
+DEVICE_ID="unknown"
+for i in 1 2 3 4 5; do
+    DEVICE_ID=$("$BIN_PATH" showid 2>/dev/null || true)
+    if [[ -n "$DEVICE_ID" && "$DEVICE_ID" != "undefined" ]]; then
+        break
+    fi
+    echo "[INFO] Waiting for UUID to be generated... (attempt $i/5)"
+    sleep 2
+done
 echo "[INFO] Device ID: $DEVICE_ID"
 echo "[INFO] If this device is not yet registered, visit:"
 echo "[INFO] https://earnapp.com/r/$DEVICE_ID"
