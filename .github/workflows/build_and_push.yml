@@ -82,7 +82,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: madereddy/earnapp
           short-description: UNOFFICIAL image for BrightData's EarnApp.
-          readme-filepath: DOCKERHUB_README.md
+          readme-filepath: README.md
 
   prune-dockerhub:
     runs-on: ubuntu-latest
