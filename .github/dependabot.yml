@@ -2,7 +2,7 @@ version: 2
 updates:
   # Watch for Dockerfile base image updates
   - package-ecosystem: "docker"
-    directory: "/"
+    directory: "/build/lite"
     schedule:
       interval: "weekly"
       day: "monday"
