@@ -45,9 +45,12 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Fake hostnamectl + lsb_release so EarnApp runs in a minimal Debian environment
+# Generate these dynamically now so future builds will be auto updated instead of hardcoding values. 
 RUN printf '#!/bin/sh\nhostname\n' > /usr/bin/hostnamectl \
     && chmod +x /usr/bin/hostnamectl \
-    && printf '#!/bin/sh\necho "Distributor ID: Debian"\necho "Description: Debian Bookworm"\necho "Release: 12"\necho "Codename: bookworm"\n' \
+    && . /etc/os-release \
+    && printf '#!/bin/sh\necho "Distributor ID: Debian"\necho "Description: %s"\necho "Release: %s"\necho "Codename: %s"\n' \
+       "$PRETTY_NAME" "$VERSION_ID" "$VERSION_CODENAME" \
        > /usr/bin/lsb_release \
     && chmod +x /usr/bin/lsb_release
 
