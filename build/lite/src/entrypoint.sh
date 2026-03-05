@@ -47,18 +47,41 @@ chmod 600 "$CONFIG_DIR/"*
 # --------------------------
 echo ""
 echo "------------------------------------------------------------"
-DEVICE_ID="unknown"
-for i in 1 2 3 4 5; do
-    DEVICE_ID=$("$BIN_PATH" showid 2>/dev/null || true)
-    if [[ -n "$DEVICE_ID" && "$DEVICE_ID" != "undefined" ]]; then
-        break
+if [[ -n "${EARNAPP_UUID:-}" ]]; then
+    DEVICE_ID=$(echo -n "$EARNAPP_UUID" | tr -d '[:space:]')
+else
+    uuid_backoff=1
+    uuid_max_backoff=30
+    for i in 1 2 3 4 5; do
+        DEVICE_ID=$(("$BIN_PATH" showid 2>/dev/null || true) | tr -d '[:space:]')
+        if [[ -n "$DEVICE_ID" && "$DEVICE_ID" != "undefined" ]]; then
+            break
+        fi
+        echo "[INFO] Waiting for UUID to be generated... (attempt $i/5, retrying in ${uuid_backoff}s)"
+        sleep "$uuid_backoff"
+        uuid_backoff=$((uuid_backoff * 2))
+        [[ $uuid_backoff -gt $uuid_max_backoff ]] && uuid_backoff=$uuid_max_backoff
+    done
+
+    # Fallback to file if showid still not ready
+    if [[ "$DEVICE_ID" == "unknown" || "$DEVICE_ID" == "undefined" ]]; then
+        DEVICE_ID=$(tr -d '[:space:]' < "$CONFIG_DIR/uuid" 2>/dev/null || echo "unknown")
     fi
-    echo "[INFO] Waiting for UUID to be generated... (attempt $i/5)"
-    sleep 2
-done
-echo "[INFO] Device ID: $DEVICE_ID"
-echo "[INFO] If this device is not yet registered, visit:"
-echo "[INFO] https://earnapp.com/r/$DEVICE_ID"
+fi
+
+# Sanity check format
+if [[ "$DEVICE_ID" == "unknown" ]]; then
+    echo "[WARN] UUID not ready yet. Run 'docker exec earnapp earnapp showid' once the container is running."
+elif [[ ! "$DEVICE_ID" =~ ^sdk-node-[a-f0-9]{32}$ ]]; then
+    echo "[WARN] Device ID format looks unexpected: $DEVICE_ID"
+    echo "[INFO] Device ID: $DEVICE_ID"
+    echo "[INFO] If this device is not yet registered, visit:"
+    echo "[INFO] https://earnapp.com/r/$DEVICE_ID"
+else
+    echo "[INFO] Device ID: $DEVICE_ID"
+    echo "[INFO] If this device is not yet registered, visit:"
+    echo "[INFO] https://earnapp.com/r/$DEVICE_ID"
+fi
 echo "------------------------------------------------------------"
 echo ""
 
