@@ -30,13 +30,8 @@ jobs:
       - name: Get EarnApp version and build metadata
         id: meta
         run: |
-          INSTALLER=$(curl -fsSL https://brightdata.com/static/earnapp/install.sh)
-          echo "[DEBUG] Installer script head:"
-          echo "$INSTALLER" | head -20
-          
-          VERSION=$(echo "$INSTALLER" | grep VERSION= | cut -d'"' -f2)
-          echo "[DEBUG] Resolved version: '$VERSION'"
-          
+          VERSION=$(curl -fsSL https://brightdata.com/static/earnapp/install.sh \
+            | grep 'VERSION=' | cut -d'"' -f2)
           if [ -z "$VERSION" ]; then
             echo "[ERROR] Failed to resolve EarnApp version"
             exit 1
