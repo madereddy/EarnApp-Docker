@@ -85,7 +85,7 @@ else
 
     # Fallback to file if showid still not ready after all retries
     if [[ "$DEVICE_ID" == "unknown" || "$DEVICE_ID" == "undefined" ]]; then
-        DEVICE_ID=$(tr -d '[:space:]' < "$CONFIG_DIR/uuid" 2>/dev/null || echo "unknown")
+        DEVICE_ID=$(cat "$CONFIG_DIR/uuid" 2>/dev/null | tr -d '[:space:]' || echo "unknown")
     fi
 fi
 
