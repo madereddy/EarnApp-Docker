@@ -22,7 +22,7 @@ LABEL org.opencontainers.image.created=$BUILD_DATE \
 # Install curl, download binary, then remove curl to keep image lean (~15MB saved)
 # Kept CA Certs to reduce random TLS errors at runtime
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && apt-get install -y --no-install-recommends curl ca-certificates dbus \
     && mkdir -p "$APP_DIR" "$CONFIG_DIR" \
     && if [ -z "$EARNAPP_VERSION" ]; then \
         EARNAPP_VERSION=$(curl -fsSL "$INSTALLER_URL" | grep VERSION= | cut -d'"' -f2); \
