@@ -1,4 +1,4 @@
-FROM debian:stable-slim@sha256:85dfcffff3c1e193877f143d05eaba8ae7f3f95cb0a32e0bc04a448077e1ac69
+FROM debian:bookworm-slim@sha256:74d56e3931e0d5a1dd51f8c8a2466d21de84a271cd3b5a733b803aa91abf4421
 
 ARG EARNAPP_VERSION=""
 ARG INSTALLER_URL=https://brightdata.com/static/earnapp/install.sh
