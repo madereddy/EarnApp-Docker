@@ -88,9 +88,8 @@ else
         sleep "$uuid_backoff"
         # Restart EarnApp to retry registration
         "$BIN_PATH" stop 2>/dev/null || true
-        sleep 1
-        "$BIN_PATH" start 2>/dev/null || true
         sleep 2
+        "$BIN_PATH" start 2>/dev/null || true
         uuid_backoff=$((uuid_backoff * 2))
         [[ $uuid_backoff -gt $uuid_max_backoff ]] && uuid_backoff=$uuid_max_backoff
     done
