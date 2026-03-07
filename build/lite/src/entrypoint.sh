@@ -9,6 +9,13 @@ BIN_PATH="${BIN_PATH:-/usr/bin/earnapp}"
 CONFIG_DIR="${CONFIG_DIR:-/etc/earnapp}"
 
 # --------------------------
+# Start dbus for EarnApp compatibility
+# --------------------------
+mkdir -p /var/run/dbus
+dbus-daemon --system --fork 2>/dev/null || true
+sleep 5
+
+# --------------------------
 # Debug mode
 # --------------------------
 if [[ "${DEBUG_MODE:-}" == "1" ]]; then
@@ -70,9 +77,9 @@ if [[ -n "${EARNAPP_UUID:-}" ]]; then
 else
     # UUID not provided — wait for EarnApp to generate it with exponential backoff
     uuid_backoff=1
-    uuid_max_backoff=30
+    uuid_max_backoff=300
     DEVICE_ID="unknown"
-    for i in 1 2 3 4 5; do
+    for i in 1 2 3 4 5 6 7 8 9 10; do
         DEVICE_ID=$(("$BIN_PATH" showid 2>/dev/null || true) | tr -d '[:space:]')
         if [[ -n "$DEVICE_ID" && "$DEVICE_ID" != "undefined" ]]; then
             break
