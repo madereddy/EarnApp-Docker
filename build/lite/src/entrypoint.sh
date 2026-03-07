@@ -73,7 +73,7 @@ else
     uuid_backoff=2
     uuid_max_backoff=30
     DEVICE_ID="unknown"
-    MAX_ATTEMPTS=12
+    MAX_ATTEMPTS=5
     for i in $(seq 1 $MAX_ATTEMPTS); do
         DEVICE_ID=$(("$BIN_PATH" showid 2>/dev/null || true) | tr -d '[:space:]')
         if [[ -n "$DEVICE_ID" && "$DEVICE_ID" != "undefined" ]]; then
