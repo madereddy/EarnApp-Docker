@@ -79,13 +79,18 @@ else
     uuid_backoff=1
     uuid_max_backoff=300
     DEVICE_ID="unknown"
-    for i in 1 2 3 4 5 6 7 8 9 10; do
+    for i in 1 2 3 4 5 6 7; do
         DEVICE_ID=$(("$BIN_PATH" showid 2>/dev/null || true) | tr -d '[:space:]')
         if [[ -n "$DEVICE_ID" && "$DEVICE_ID" != "undefined" ]]; then
             break
         fi
-        echo "[INFO] Waiting for UUID to be generated... (attempt $i/5, retrying in ${uuid_backoff}s)"
+        echo "[INFO] Waiting for UUID to be generated... (attempt $i/7, retrying in ${uuid_backoff}s)"
         sleep "$uuid_backoff"
+        # Restart EarnApp to retry registration
+        "$BIN_PATH" stop 2>/dev/null || true
+        sleep 1
+        "$BIN_PATH" start 2>/dev/null || true
+        sleep 2
         uuid_backoff=$((uuid_backoff * 2))
         [[ $uuid_backoff -gt $uuid_max_backoff ]] && uuid_backoff=$uuid_max_backoff
     done
