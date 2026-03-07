@@ -9,13 +9,6 @@ BIN_PATH="${BIN_PATH:-/usr/bin/earnapp}"
 CONFIG_DIR="${CONFIG_DIR:-/etc/earnapp}"
 
 # --------------------------
-# Start dbus for EarnApp compatibility
-# --------------------------
-mkdir -p /var/run/dbus
-dbus-daemon --system --fork 2>/dev/null || true
-sleep 5
-
-# --------------------------
 # Debug mode
 # --------------------------
 if [[ "${DEBUG_MODE:-}" == "1" ]]; then
@@ -76,20 +69,22 @@ if [[ -n "${EARNAPP_UUID:-}" ]]; then
     DEVICE_ID=$(echo -n "$EARNAPP_UUID" | tr -d '[:space:]')
 else
     # UUID not provided — wait for EarnApp to generate it with exponential backoff
-    uuid_backoff=1
-    uuid_max_backoff=300
+    # Registration can take 2-3 minutes on first run depending on network conditions
+    uuid_backoff=2
+    uuid_max_backoff=30
     DEVICE_ID="unknown"
-    for i in 1 2 3 4 5 6 7; do
+    MAX_ATTEMPTS=12
+    for i in $(seq 1 $MAX_ATTEMPTS); do
         DEVICE_ID=$(("$BIN_PATH" showid 2>/dev/null || true) | tr -d '[:space:]')
         if [[ -n "$DEVICE_ID" && "$DEVICE_ID" != "undefined" ]]; then
             break
         fi
-        echo "[INFO] Waiting for UUID to be generated... (attempt $i/7, retrying in ${uuid_backoff}s)"
-        sleep "$uuid_backoff"
-        # Restart EarnApp to retry registration
+        echo "[INFO] Waiting for EarnApp to register... (attempt $i/$MAX_ATTEMPTS, retrying in ${uuid_backoff}s)"
+        # Restart EarnApp on each attempt to retry registration
         "$BIN_PATH" stop 2>/dev/null || true
-        sleep 2
+        sleep 1
         "$BIN_PATH" start 2>/dev/null || true
+        sleep "$uuid_backoff"
         uuid_backoff=$((uuid_backoff * 2))
         [[ $uuid_backoff -gt $uuid_max_backoff ]] && uuid_backoff=$uuid_max_backoff
     done
@@ -102,7 +97,10 @@ fi
 
 # Sanity check — validate UUID looks correct before printing registration link
 if [[ "$DEVICE_ID" == "unknown" ]]; then
-    echo "[WARN] UUID not ready yet. Run 'docker exec earnapp earnapp showid' once the container is running."
+    echo "[WARN] UUID not available yet — EarnApp may still be registering in the background."
+    echo "[INFO] This is normal on first run or slow networks. Registration can take several minutes."
+    echo "[INFO] Once ready, run: docker exec earnapp earnapp showid"
+    echo "[INFO] Then visit:      https://earnapp.com/r/<your-device-id>"
 elif [[ ! "$DEVICE_ID" =~ ^sdk-node-[a-f0-9]{32}$ ]]; then
     echo "[WARN] Device ID format looks unexpected: $DEVICE_ID"
     echo "[INFO] Device ID:   $DEVICE_ID"
