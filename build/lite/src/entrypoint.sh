@@ -51,6 +51,19 @@ fi
 chmod 600 "$CONFIG_DIR/"*
 
 # --------------------------
+# Warn if /etc/earnapp is not a volume mount
+# --------------------------
+if ! grep -q " $CONFIG_DIR " /proc/mounts 2>/dev/null; then
+    echo "############################################################"
+    echo "[WARN] /etc/earnapp is NOT mounted as a volume!"
+    echo "[WARN] Your UUID will be lost every time this container restarts."
+    echo "[WARN] You will need to re-register this device on each restart."
+    echo "[WARN] To persist your UUID, mount a volume:"
+    echo "[WARN]   docker run -v /path/to/earnapp:/etc/earnapp ..."
+    echo "############################################################"
+fi
+
+# --------------------------
 # Start EarnApp early so UUID is generated before we try to read it
 # --------------------------
 echo "[INFO] Starting EarnApp..."
