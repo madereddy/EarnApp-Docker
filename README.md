@@ -23,7 +23,7 @@ Unofficial containerized version of BrightData's EarnApp with **Debian slim** ba
 
 EarnApp can either generate its own UUID automatically, or you can provide one manually.
 
-> **Important:** Always mount `/etc/earnapp` as a volume. Without it, your UUID will be lost on every container restart, creating a new unregistered device on your account each time.
+> **Important:** A volume mount for /etc/earnapp is required. Without it, your UUID will be lost on every container restart, creating a new unregistered device on your account each time. EarnApp can generate a UUID automatically, or you can provide one manually.
 
 ### Option 1 — Let EarnApp generate the UUID (recommended for new installs)
 
@@ -86,7 +86,7 @@ The UUID source will be one of:
 docker exec earnapp earnapp showid
 ```
 
-> **Note:** On first run with auto-generated UUID, there may be a short delay while EarnApp generates the UUID. The entrypoint will wait and retry automatically, with exponential backoff to accommodate slower ARM devices.
+> **Note:** On first run, registration can take several minutes depending on network conditions. The entrypoint will retry automatically with exponential backoff. If the UUID is not shown in the logs, run `docker exec earnapp earnapp showid` once the container is fully started.
 
 ---
 
@@ -112,7 +112,7 @@ services:
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `EARNAPP_UUID` | No | auto-generated | Your EarnApp node UUID (`sdk-node-...`). If not set, EarnApp will generate one. Ensure `/etc/earnapp` is mounted as a volume or the UUID will be lost on restart. |
+| `EARNAPP_UUID` | No | auto-generated | Your EarnApp node UUID (sdk-node-...). If not set, EarnApp will generate one automatically. A volume mount is required regardless — without it the UUID is lost on every restart. |
 | `DEBUG_MODE` | No | `0` | Set to `1` to drop into a bash shell instead of starting EarnApp. Useful for troubleshooting. |
 
 The container stores the following files in `/etc/earnapp`:
@@ -223,6 +223,6 @@ docker inspect madereddy/earnapp --format '{{ json .Config.Labels }}'
 
 - The container fakes `hostnamectl` and `lsb_release` so EarnApp can run in a minimal Debian environment.
 - The entrypoint keeps EarnApp running and will automatically retry if it crashes, using exponential backoff up to a maximum of 5 minutes between retries.
-- On first run without a pre-existing UUID, the entrypoint will wait up to ~31 seconds for EarnApp to generate one before falling back. If the UUID is still not ready, run `docker exec earnapp earnapp showid` once the container is fully started.
+- On first run without a pre-existing UUID, the entrypoint will wait several minutes for EarnApp to register. If the UUID is still not shown in the logs, run `docker exec earnapp earnapp showid` once the container is fully started. Registration time varies by network conditions.
 - If the container reports unhealthy, check that `/etc/earnapp/status` contains `enabled`. This file is written by EarnApp on successful registration.
 - Restarting or recreating the container with the same volume mount will reuse the existing UUID. Your device registration is preserved automatically.
