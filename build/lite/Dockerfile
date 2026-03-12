@@ -60,7 +60,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 #             /usr/bin/loginctl \
 #             /usr/bin/systemd-tmpfiles
 
-COPY --chmod +x src/systemctl3.py /usr/bin/systemctl && --chmod +x src/journalctl3.py /usr/bin/journalctl &&  --chmod +x src/hostnamectl3.py /usr/bin/hostnamectl 
+COPY --chmod=755 src/systemctl3.py /usr/bin/systemctl && --chmod=755 src/journalctl3.py /usr/bin/journalctl &&  --chmod=755 src/hostnamectl3.py /usr/bin/hostnamectl 
 
 # Install EarnApp via install script
 RUN curl -fsSL "$INSTALLER_URL" -o /tmp/earnapp.sh \
