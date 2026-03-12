@@ -2,7 +2,6 @@ FROM ubuntu:22.04@sha256:0e5e4a57c2499249aafc3b40fcd541e9a456aab7296681a3994d631
 
 ARG EARNAPP_VERSION=""
 ARG INSTALLER_URL=https://brightdata.com/static/earnapp/install.sh
-ARG TARGETARCH
 ARG BUILD_DATE
 ARG VCS_REF
 
@@ -41,46 +40,31 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         openssl \
         python3 \
         lsb-release \
-    && update-ca-certificates
+    && update-ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install systemctl replacement
 RUN curl -L https://raw.githubusercontent.com/rickyn-croesus/docker-systemctl-replacement/1e9f41ccb25e3e45c4d06439b9fa6f3a7c5a0d0e/files/docker/systemctl3.py \
-        -o /usr/bin/systemctl \
-    && curl -L https://raw.githubusercontent.com/rickyn-croesus/docker-systemctl-replacement/1e9f41ccb25e3e45c4d06439b9fa6f3a7c5a0d0e/files/docker/hostnamectl3.py \
-        -o /usr/bin/hostnamectl \
-    && curl -L https://raw.githubusercontent.com/rickyn-croesus/docker-systemctl-replacement/1e9f41ccb25e3e45c4d06439b9fa6f3a7c5a0d0e/files/docker/journalctl3.py \
-        -o /usr/bin/journalctl \
-    && curl -L https://raw.githubusercontent.com/rickyn-croesus/docker-systemctl-replacement/1e9f41ccb25e3e45c4d06439b9fa6f3a7c5a0d0e/files/docker/loginctl3.py \
-        -o /usr/bin/loginctl \
-    && curl -L https://raw.githubusercontent.com/rickyn-croesus/docker-systemctl-replacement/1e9f41ccb25e3e45c4d06439b9fa6f3a7c5a0d0e/files/docker/systemd-tmpfiles3.py \
-        -o /usr/bin/systemd-tmpfiles \
-    && chmod +x \
-        /usr/bin/systemctl \
-        /usr/bin/hostnamectl \
-        /usr/bin/journalctl \
-        /usr/bin/loginctl \
-        /usr/bin/systemd-tmpfiles
+        -o /usr/bin/systemctl && \
+    curl -L https://raw.githubusercontent.com/rickyn-croesus/docker-systemctl-replacement/1e9f41ccb25e3e45c4d06439b9fa6f3a7c5a0d0e/files/docker/hostnamectl3.py \
+        -o /usr/bin/hostnamectl && \
+    curl -L https://raw.githubusercontent.com/rickyn-croesus/docker-systemctl-replacement/1e9f41ccb25e3e45c4d06439b9fa6f3a7c5a0d0e/files/docker/journalctl3.py \
+        -o /usr/bin/journalctl && \
+    curl -L https://raw.githubusercontent.com/rickyn-croesus/docker-systemctl-replacement/1e9f41ccb25e3e45c4d06439b9fa6f3a7c5a0d0e/files/docker/loginctl3.py \
+        -o /usr/bin/loginctl && \
+    curl -L https://raw.githubusercontent.com/rickyn-croesus/docker-systemctl-replacement/1e9f41ccb25e3e45c4d06439b9fa6f3a7c5a0d0e/files/docker/systemd-tmpfiles3.py \
+        -o /usr/bin/systemd-tmpfiles && \
+    chmod +x /usr/bin/systemctl \
+             /usr/bin/hostnamectl \
+             /usr/bin/journalctl \
+             /usr/bin/loginctl \
+             /usr/bin/systemd-tmpfiles
 
-# Install EarnApp binary
-RUN if [ -z "$EARNAPP_VERSION" ]; then \
-        EARNAPP_VERSION=$(curl -fsSL "$INSTALLER_URL" | grep VERSION= | cut -d'"' -f2); \
-    fi \
-    && echo "[INFO] Installing EarnApp $EARNAPP_VERSION for $TARGETARCH" \
-    && if [ "$TARGETARCH" = "amd64" ]; then \
-        FILE="earnapp-x64-$EARNAPP_VERSION"; \
-    elif [ "$TARGETARCH" = "arm64" ]; then \
-        FILE="earnapp-aarch64-$EARNAPP_VERSION"; \
-    elif [ "$TARGETARCH" = "arm" ]; then \
-        FILE="earnapp-arm7l-$EARNAPP_VERSION"; \
-    else \
-        echo "[ERROR] Unsupported architecture: $TARGETARCH"; exit 1; \
-    fi \
-    && echo "[INFO] Downloading $FILE" \
-    && curl -fL "$CDN_BASE/$FILE" -o "$BIN_PATH" \
-    && chmod +x "$BIN_PATH" \
+# Install EarnApp via install script
+RUN curl -fsSL "$INSTALLER_URL" -o /tmp/earnapp.sh \
+    && echo "yes" | bash /tmp/earnapp.sh \
+    && rm -f /tmp/earnapp.sh \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-COPY --chmod=755 src/entrypoint.sh /entrypoint.sh
 
 COPY --chmod=755 src/entrypoint.sh /entrypoint.sh
 
