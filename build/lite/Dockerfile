@@ -21,7 +21,7 @@ LABEL org.opencontainers.image.created=$BUILD_DATE \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.description="Unofficial containerized EarnApp by BrightData"
 
-# Install dependencies, systemctl replacement, and EarnApp binary in a single layer
+# Install dependencies and update CA certs
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         curl \
@@ -33,8 +33,10 @@ RUN apt-get update \
         python3 \
         lsb-release \
     && update-ca-certificates \
-    && mkdir -p "$APP_DIR" "$CONFIG_DIR" /run/systemd/system \
-    && git clone --depth=1 https://github.com/gdraheim/docker-systemctl-replacement.git /tmp/systemctl-replacement \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install systemctl replacement
+RUN git clone --depth=1 https://github.com/gdraheim/docker-systemctl-replacement.git /tmp/systemctl-replacement \
     && cp /tmp/systemctl-replacement/files/docker/systemctl3.py        /usr/bin/systemctl \
     && cp /tmp/systemctl-replacement/files/docker/hostnamectl3.py      /usr/bin/hostnamectl \
     && cp /tmp/systemctl-replacement/files/docker/journalctl3.py       /usr/bin/journalctl \
@@ -46,7 +48,10 @@ RUN apt-get update \
         /usr/bin/journalctl \
         /usr/bin/loginctl \
         /usr/bin/systemd-tmpfiles \
-    && rm -rf /tmp/systemctl-replacement \
+    && rm -rf /tmp/systemctl-replacement
+
+# Install EarnApp binary
+RUN mkdir -p "$APP_DIR" "$CONFIG_DIR" /run/systemd/system \
     && if [ -z "$EARNAPP_VERSION" ]; then \
         EARNAPP_VERSION=$(curl -fsSL "$INSTALLER_URL" | grep VERSION= | cut -d'"' -f2); \
     fi \
