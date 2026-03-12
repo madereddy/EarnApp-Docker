@@ -30,12 +30,6 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
 
-      - name: Restore Buildx local cache
-        uses: actions/cache@v3
-        with:
-          path: /tmp/.buildx-cache
-          key: buildx-local-cache-${{ steps.version.outputs.version }}
-
       - name: Set image tags
         id: tags
         run: |
@@ -45,6 +39,14 @@ jobs:
           else
             echo "tags=madereddy/earnapp:test,madereddy/earnapp:${VERSION}" >> $GITHUB_OUTPUT
           fi
+
+      - name: Restore Buildx cache
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: buildx-local-cache-${{ steps.version.outputs.version }}
+          restore-keys: |
+            buildx-local-cache-
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -73,8 +75,12 @@ jobs:
           cache-to: |
             type=registry,ref=madereddy/earnapp:cache,mode=max
             type=local,dest=/tmp/.buildx-cache,mode=max
+          load: false
+          no-cache: false
+          pull: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Save Buildx local cache
+      - name: Save Buildx cache
         uses: actions/cache@v3
         with:
           path: /tmp/.buildx-cache
