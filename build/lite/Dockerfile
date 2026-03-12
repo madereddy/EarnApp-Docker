@@ -33,7 +33,7 @@ RUN apt-get update \
         lsb-release \
     && update-ca-certificates \
     && mkdir -p "$APP_DIR" "$CONFIG_DIR" /run/systemd/system \
-    && SYSTEMCTL_BASE="https://raw.githubusercontent.com/gdraheim/docker-systemctl-replacement/1e9f41ccb25e3e45c4d06439b9fa6f3a7c5a0d0e/files/docker" \
+    && SYSTEMCTL_BASE="https://raw.githubusercontent.com/gdraheim/docker-systemctl-replacement/master/files/docker" \
     && wget -q "$SYSTEMCTL_BASE/systemctl3.py"        -O /usr/bin/systemctl \
     && wget -q "$SYSTEMCTL_BASE/hostnamectl3.py"      -O /usr/bin/hostnamectl \
     && wget -q "$SYSTEMCTL_BASE/journalctl3.py"       -O /usr/bin/journalctl \
