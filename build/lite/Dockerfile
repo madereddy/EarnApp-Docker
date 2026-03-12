@@ -34,6 +34,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         curl \
         ca-certificates \
+        wget \
         sudo \
         openssl \
         python3 \
