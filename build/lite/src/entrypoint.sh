@@ -7,6 +7,8 @@ set -euo pipefail
 APP_DIR="${APP_DIR:-/app/src/}"
 BIN_PATH="${BIN_PATH:-/usr/bin/earnapp}"
 CONFIG_DIR="${CONFIG_DIR:-/etc/earnapp}"
+INSTALLER_URL="${INSTALLER_URL:-https://brightdata.com/static/earnapp/install.sh}"
+CDN_BASE="${CDN_BASE:-https://cdn-earnapp.b-cdn.net/static}"
 
 # --------------------------
 # Debug mode
@@ -17,10 +19,46 @@ if [[ "${DEBUG_MODE:-}" == "1" ]]; then
 fi
 
 # --------------------------
+# Install EarnApp if not already installed
+# --------------------------
+if [[ ! -x "$BIN_PATH" ]]; then
+    echo "[INFO] EarnApp binary not found, installing..."
+
+    if [[ -n "${EARNAPP_VERSION:-}" ]]; then
+        # Install specific version directly from CDN
+        echo "[INFO] Installing pinned version: $EARNAPP_VERSION"
+        ARCH=$(uname -m)
+        if [ "$ARCH" = "x86_64" ]; then
+            FILE="earnapp-x64-$EARNAPP_VERSION"
+        elif [ "$ARCH" = "aarch64" ]; then
+            FILE="earnapp-aarch64-$EARNAPP_VERSION"
+        elif [ "$ARCH" = "armv7l" ]; then
+            FILE="earnapp-arm7l-$EARNAPP_VERSION"
+        else
+            echo "[ERROR] Unsupported architecture: $ARCH"
+            exit 1
+        fi
+        curl -fsSL "$CDN_BASE/$FILE" -o "$BIN_PATH" \
+            || { echo "[ERROR] Failed to download EarnApp $EARNAPP_VERSION. Check the version string and your internet connection."; exit 1; }
+        chmod +x "$BIN_PATH"
+    else
+        # Install latest version via install script
+        echo "[INFO] No EARNAPP_VERSION set, installing latest version..."
+        curl -fsSL "$INSTALLER_URL" -o /tmp/earnapp.sh \
+            || { echo "[ERROR] Failed to download EarnApp installer. Check your internet connection."; exit 1; }
+        echo "yes" | bash /tmp/earnapp.sh \
+            || { echo "[ERROR] EarnApp installation failed."; exit 1; }
+        rm -f /tmp/earnapp.sh
+    fi
+
+    echo "[INFO] EarnApp installed successfully."
+fi
+
+# --------------------------
 # Validate binary
 # --------------------------
 if [[ ! -x "$BIN_PATH" ]]; then
-    echo "[ERROR] EarnApp binary not found at $BIN_PATH. Image may be corrupted."
+    echo "[ERROR] EarnApp binary not found at $BIN_PATH after installation attempt."
     exit 1
 fi
 
@@ -61,6 +99,10 @@ if ! grep -q " $CONFIG_DIR " /proc/mounts 2>/dev/null; then
     echo "[WARN] To persist your UUID, mount a volume:"
     echo "[WARN]   docker run -v /path/to/earnapp:/etc/earnapp ..."
     echo "############################################################"
+    # No volume and no env UUID — remove any stale uuid so EarnApp generates a fresh one
+    if [[ -z "${EARNAPP_UUID:-}" ]]; then
+        rm -f "$CONFIG_DIR/uuid"
+    fi
 fi
 
 # --------------------------
@@ -86,7 +128,7 @@ else
     uuid_backoff=2
     uuid_max_backoff=30
     DEVICE_ID="unknown"
-    MAX_ATTEMPTS=5
+    MAX_ATTEMPTS=12
     for i in $(seq 1 $MAX_ATTEMPTS); do
         DEVICE_ID=$(("$BIN_PATH" showid 2>/dev/null || true) | tr -d '[:space:]')
         if [[ -n "$DEVICE_ID" && "$DEVICE_ID" != "undefined" ]]; then
