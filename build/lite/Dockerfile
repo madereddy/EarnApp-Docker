@@ -30,9 +30,7 @@ RUN mkdir -p \
     && touch /etc/initrd-release
 
 # Install dependencies
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get update \
+RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         curl \
         ca-certificates \
