@@ -4,15 +4,15 @@ ARG BUILD_DATE
 ARG VCS_REF
 ARG EARNAPP_VERSION
 
-ENV DEBIAN_FRONTEND=noninteractive
-ENV container=docker
-ENV APP_DIR=/app/src/
-ENV BIN_PATH=/usr/bin/earnapp
-ENV CONFIG_DIR=/etc/earnapp
-ENV MALLOC_ARENA_MAX=2
-ENV INSTALLER_URL=https://brightdata.com/static/earnapp/install.sh
-ENV CDN_BASE=https://cdn-earnapp.b-cdn.net/static
-ENV EARNAPP_VERSION=${EARNAPP_VERSION}
+ENV DEBIAN_FRONTEND=noninteractive \
+    container=docker \
+    APP_DIR=/app/src/ \
+    BIN_PATH=/usr/bin/earnapp \
+    CONFIG_DIR=/etc/earnapp \
+    MALLOC_ARENA_MAX=2 \
+    INSTALLER_URL=https://brightdata.com/static/earnapp/install.sh \
+    CDN_BASE=https://cdn-earnapp.b-cdn.net/static \
+    EARNAPP_VERSION=${EARNAPP_VERSION}
 
 LABEL org.opencontainers.image.created=$BUILD_DATE \
       org.opencontainers.image.revision=$VCS_REF \
@@ -34,7 +34,7 @@ RUN mkdir -p \
 
 # Install dependencies
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     apt-get update \
     && apt-get install -y --no-install-recommends \
         curl \
@@ -45,8 +45,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         python3 \
         lsb-release \
     && update-ca-certificates \
-    && apt-get clean \
-    && apt-get autoremove --purge
+    && apt-get autoremove -y --purge \
+    && apt-get clean
 
 COPY --chmod=755 src/systemctl3.py   /usr/bin/systemctl
 COPY --chmod=755 src/hostnamectl3.py /usr/bin/hostnamectl
