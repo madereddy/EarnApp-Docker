@@ -19,6 +19,12 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Restore Buildx local cache
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: buildx-local-cache-${{ steps.version.outputs.version }}
+
       - name: Read EarnApp version
         id: version
         run: |
@@ -67,10 +73,12 @@ jobs:
           cache-to: |
             type=registry,ref=madereddy/earnapp:cache,mode=max
             type=local,dest=/tmp/.buildx-cache,mode=max
-          # enable BuildKit local cache mounts for apt
-          cache-mounts: |
-            type=cache,target=/var/cache/apt,sharing=locked
-            type=cache,target=/var/lib/apt/lists,sharing=locked
+
+      - name: Save Buildx local cache
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: buildx-local-cache-${{ steps.version.outputs.version }}
 
       - name: Update Docker Hub README
         if: github.ref == 'refs/heads/master'
