@@ -19,12 +19,6 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Restore Buildx local cache
-        uses: actions/cache@v3
-        with:
-          path: /tmp/.buildx-cache
-          key: buildx-local-cache-${{ steps.version.outputs.version }}
-
       - name: Read EarnApp version
         id: version
         run: |
@@ -35,6 +29,12 @@ jobs:
           VERSION=$(tr -d '\n' < .earnapp-version)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
+
+      - name: Restore Buildx local cache
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: buildx-local-cache-${{ steps.version.outputs.version }}
 
       - name: Set image tags
         id: tags
