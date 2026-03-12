@@ -9,6 +9,9 @@ ENV APP_DIR=/app/src/
 ENV BIN_PATH=/usr/bin/earnapp
 ENV CONFIG_DIR=/etc/earnapp
 ENV MALLOC_ARENA_MAX=2
+ENV INSTALLER_URL=https://brightdata.com/static/earnapp/install.sh
+ENV CDN_BASE=https://cdn-earnapp.b-cdn.net/static
+ENV EARNAPP_VERSION=""
 
 LABEL org.opencontainers.image.created=$BUILD_DATE \
       org.opencontainers.image.revision=$VCS_REF \
