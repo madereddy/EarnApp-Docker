@@ -52,6 +52,7 @@ RUN curl -fsSL "$INSTALLER_URL" -o /tmp/earnapp.sh \
     && echo "yes" | bash /tmp/earnapp.sh \
     && rm -f /tmp/earnapp.sh \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
+    && rm -f "$CONFIG_DIR/uuid" \
     && apt-get purge -y --auto-remove curl ca-certificates wget openssl
 
 COPY --chmod=755 src/entrypoint.sh /entrypoint.sh
