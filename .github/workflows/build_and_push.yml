@@ -66,8 +66,9 @@ jobs:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           build-args: |
             EARNAPP_VERSION=${{ steps.version.outputs.version }}
-            BUILD_DATE=${{ steps.version.outputs.date }}
             VCS_REF=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.created=${{ steps.version.outputs.date }}
           tags: ${{ steps.tags.outputs.tags }}
           cache-from: |
             type=registry,ref=madereddy/earnapp:cache
