@@ -1,0 +1,70 @@
+name: "Update systemctl replacement files"
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Every Monday at 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-systemctl:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Download latest systemctl replacement files
+        id: download
+        run: |
+          BASE_URL="https://raw.githubusercontent.com/gdraheim/docker-systemctl-replacement/master/files/docker"
+          DEST="build/lite/systemctl"
+          mkdir -p "$DEST"
+
+          FILES=(
+            systemctl3.py
+            hostnamectl3.py
+            journalctl3.py
+            loginctl3.py
+            systemd-tmpfiles3.py
+          )
+
+          for FILE in "${FILES[@]}"; do
+            curl -fsSL "$BASE_URL/$FILE" -o "$DEST/$FILE"
+          done
+
+          # Get the latest commit SHA from the gdraheim repo for tracking
+          LATEST_SHA=$(curl -fsSL "https://api.github.com/repos/gdraheim/docker-systemctl-replacement/commits/master" \
+            | jq -r '.sha')
+          echo "latest_sha=${LATEST_SHA}" >> $GITHUB_OUTPUT
+          echo "short_sha=${LATEST_SHA:0:7}" >> $GITHUB_OUTPUT
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet build/lite/systemctl/; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Open pull request
+        if: steps.changes.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update systemctl replacement files to ${{ steps.download.outputs.short_sha }}"
+          branch: "chore/update-systemctl-replacement"
+          delete-branch: true
+          title: "chore: update systemctl replacement files (${{ steps.download.outputs.short_sha }})"
+          body: |
+            Automated update of vendored systemctl replacement files from [gdraheim/docker-systemctl-replacement](https://github.com/gdraheim/docker-systemctl-replacement).
+
+            **Upstream commit:** `${{ steps.download.outputs.latest_sha }}`
+
+            Please review the changes before merging.
+          labels: dependencies
