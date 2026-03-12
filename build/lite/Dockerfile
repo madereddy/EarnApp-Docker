@@ -44,21 +44,23 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && update-ca-certificates && apt-get clean && apt-get autoremove --purge
 
 # Install systemctl replacement
-RUN curl -L https://raw.githubusercontent.com/rickyn-croesus/docker-systemctl-replacement/1e9f41ccb25e3e45c4d06439b9fa6f3a7c5a0d0e/files/docker/systemctl3.py \
-        -o /usr/bin/systemctl && \
-    curl -L https://raw.githubusercontent.com/rickyn-croesus/docker-systemctl-replacement/1e9f41ccb25e3e45c4d06439b9fa6f3a7c5a0d0e/files/docker/hostnamectl3.py \
-        -o /usr/bin/hostnamectl && \
-    curl -L https://raw.githubusercontent.com/rickyn-croesus/docker-systemctl-replacement/1e9f41ccb25e3e45c4d06439b9fa6f3a7c5a0d0e/files/docker/journalctl3.py \
-        -o /usr/bin/journalctl && \
-    curl -L https://raw.githubusercontent.com/rickyn-croesus/docker-systemctl-replacement/1e9f41ccb25e3e45c4d06439b9fa6f3a7c5a0d0e/files/docker/loginctl3.py \
-        -o /usr/bin/loginctl && \
-    curl -L https://raw.githubusercontent.com/rickyn-croesus/docker-systemctl-replacement/1e9f41ccb25e3e45c4d06439b9fa6f3a7c5a0d0e/files/docker/systemd-tmpfiles3.py \
-        -o /usr/bin/systemd-tmpfiles && \
-    chmod +x /usr/bin/systemctl \
-             /usr/bin/hostnamectl \
-             /usr/bin/journalctl \
-             /usr/bin/loginctl \
-             /usr/bin/systemd-tmpfiles
+#RUN curl -L https://raw.githubusercontent.com/rickyn-croesus/docker-systemctl-replacement/1e9f41ccb25e3e45c4d06439b9fa6f3a7c5a0d0e/files/docker/systemctl3.py \
+#        -o /usr/bin/systemctl && \
+#    curl -L https://raw.githubusercontent.com/rickyn-croesus/docker-systemctl-replacement/1e9f41ccb25e3e45c4d06439b9fa6f3a7c5a0d0e/files/docker/hostnamectl3.py \
+#        -o /usr/bin/hostnamectl && \
+#    curl -L https://raw.githubusercontent.com/rickyn-croesus/docker-systemctl-replacement/1e9f41ccb25e3e45c4d06439b9fa6f3a7c5a0d0e/files/docker/journalctl3.py \
+#        -o /usr/bin/journalctl && \
+#    curl -L https://raw.githubusercontent.com/rickyn-croesus/docker-systemctl-replacement/1e9f41ccb25e3e45c4d06439b9fa6f3a7c5a0d0e/files/docker/loginctl3.py \
+#        -o /usr/bin/loginctl && \
+#    curl -L https://raw.githubusercontent.com/rickyn-croesus/docker-systemctl-replacement/1e9f41ccb25e3e45c4d06439b9fa6f3a7c5a0d0e/files/docker/systemd-tmpfiles3.py \
+#        -o /usr/bin/systemd-tmpfiles && \
+#    chmod +x /usr/bin/systemctl \
+#             /usr/bin/hostnamectl \
+#             /usr/bin/journalctl \
+#             /usr/bin/loginctl \
+#             /usr/bin/systemd-tmpfiles
+
+COPY --chmod +x src/systemctl3.py /usr/bin/systemctl && --chmod +x src/journalctl3.py /usr/bin/journalctl &&  --chmod +x src/hostnamectl3.py /usr/bin/hostnamectl 
 
 # Install EarnApp via install script
 RUN curl -fsSL "$INSTALLER_URL" -o /tmp/earnapp.sh \
