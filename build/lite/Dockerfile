@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim@sha256:74d56e3931e0d5a1dd51f8c8a2466d21de84a271cd3b5a733b803aa91abf4421
+FROM ubuntu:22.04@sha256:0e5e4a57c2499249aafc3b40fcd541e9a456aab7296681a3994d631587203f97
 
 ARG EARNAPP_VERSION=""
 ARG INSTALLER_URL=https://brightdata.com/static/earnapp/install.sh
@@ -7,6 +7,7 @@ ARG BUILD_DATE
 ARG VCS_REF
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV container=docker
 ENV APP_DIR=/app/src/
 ENV BIN_PATH=/usr/bin/earnapp
 ENV CONFIG_DIR=/etc/earnapp
@@ -19,11 +20,18 @@ LABEL org.opencontainers.image.created=$BUILD_DATE \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.description="Unofficial containerized EarnApp by BrightData"
 
-# Install curl, download binary, then remove curl to keep image lean (~15MB saved)
-# Kept CA Certs to reduce random TLS errors at runtime
+# Install dependencies, systemctl replacement, and EarnApp binary
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates dbus \
-    && mkdir -p "$APP_DIR" "$CONFIG_DIR" \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        ca-certificates \
+        wget \
+        sudo \
+        openssl \
+        python3 \
+        lsb-release \
+    && update-ca-certificates \
+    && mkdir -p "$APP_DIR" "$CONFIG_DIR" /run/systemd/system \
     && if [ -z "$EARNAPP_VERSION" ]; then \
         EARNAPP_VERSION=$(curl -fsSL "$INSTALLER_URL" | grep VERSION= | cut -d'"' -f2); \
     fi \
@@ -44,17 +52,19 @@ RUN apt-get update \
     && apt-get purge -y --auto-remove curl \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Fake hostnamectl + lsb_release so EarnApp runs in a minimal Debian environment
-# Generate these dynamically now so future builds will be auto updated instead of hardcoding values. 
-RUN printf '#!/bin/sh\nhostname\n' > /usr/bin/hostnamectl \
-    && chmod +x /usr/bin/hostnamectl \
-    && . /etc/os-release \
-    && printf '#!/bin/sh\necho "Distributor ID: Debian"\necho "Description: %s"\necho "Release: %s"\necho "Codename: %s"\n' \
-       "$PRETTY_NAME" "$VERSION_ID" "$VERSION_CODENAME" \
-       > /usr/bin/lsb_release \
-    && chmod +x /usr/bin/lsb_release \
-    && printf '#!/bin/sh\nexit 0\n' > /usr/bin/systemctl \
-    && chmod +x /usr/bin/systemctl
+# Install systemctl replacement and remove shell stubs no longer needed
+ARG SYSTEMCTL_REPO=https://raw.githubusercontent.com/gdraheim/docker-systemctl-replacement/master/files/docker
+RUN wget -q "$SYSTEMCTL_REPO/systemctl3.py"      -O /usr/bin/systemctl \
+    && wget -q "$SYSTEMCTL_REPO/hostnamectl3.py"  -O /usr/bin/hostnamectl \
+    && wget -q "$SYSTEMCTL_REPO/journalctl3.py"   -O /usr/bin/journalctl \
+    && wget -q "$SYSTEMCTL_REPO/loginctl3.py"     -O /usr/bin/loginctl \
+    && wget -q "$SYSTEMCTL_REPO/systemd-tmpfiles3.py" -O /usr/bin/systemd-tmpfiles \
+    && chmod +x \
+        /usr/bin/systemctl \
+        /usr/bin/hostnamectl \
+        /usr/bin/journalctl \
+        /usr/bin/loginctl \
+        /usr/bin/systemd-tmpfiles
 
 COPY --chmod=755 src/entrypoint.sh /entrypoint.sh
 
