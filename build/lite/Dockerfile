@@ -2,6 +2,7 @@ FROM ubuntu:22.04@sha256:0e5e4a57c2499249aafc3b40fcd541e9a456aab7296681a3994d631
 
 ARG BUILD_DATE
 ARG VCS_REF
+ARG EARNAPP_VERSION
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV container=docker
@@ -11,7 +12,7 @@ ENV CONFIG_DIR=/etc/earnapp
 ENV MALLOC_ARENA_MAX=2
 ENV INSTALLER_URL=https://brightdata.com/static/earnapp/install.sh
 ENV CDN_BASE=https://cdn-earnapp.b-cdn.net/static
-ENV EARNAPP_VERSION=""
+ENV EARNAPP_VERSION=${EARNAPP_VERSION}
 
 LABEL org.opencontainers.image.created=$BUILD_DATE \
       org.opencontainers.image.revision=$VCS_REF \
