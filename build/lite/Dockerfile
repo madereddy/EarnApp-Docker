@@ -1,36 +1,16 @@
-FROM ubuntu:22.04@sha256:0e5e4a57c2499249aafc3b40fcd541e9a456aab7296681a3994d631587203f97
+# Base stage: OS + dependencies
+FROM FROM ubuntu:22.04@sha256:0e5e4a57c2499249aafc3b40fcd541e9a456aab7296681a3994d631587203f97 AS base
 
 ARG BUILD_DATE
 ARG VCS_REF
-ARG EARNAPP_VERSION
 
 ENV DEBIAN_FRONTEND=noninteractive \
-    container=docker \
     APP_DIR=/app/src/ \
     BIN_PATH=/usr/bin/earnapp \
     CONFIG_DIR=/etc/earnapp \
     MALLOC_ARENA_MAX=2 \
     INSTALLER_URL=https://brightdata.com/static/earnapp/install.sh \
-    CDN_BASE=https://cdn-earnapp.b-cdn.net/static \
-    EARNAPP_VERSION=${EARNAPP_VERSION}
-
-LABEL org.opencontainers.image.created=$BUILD_DATE \
-      org.opencontainers.image.revision=$VCS_REF \
-      org.opencontainers.image.source="https://github.com/madereddy/EarnApp-Docker" \
-      org.opencontainers.image.licenses="MIT" \
-      org.opencontainers.image.description="Unofficial containerized EarnApp by BrightData"
-
-# Create expected systemd runtime directories and initrd-release
-RUN mkdir -p \
-        /run/systemd/system \
-        /etc/systemd/system \
-        /etc/systemd/system/multi-user.target.wants \
-        /lib/systemd/system \
-        "$APP_DIR" \
-        "$CONFIG_DIR" \
-    && touch /etc/initrd-release \
-    && touch /usr/bin/loginctl \
-    && touch /usr/bin/systemd-tmpfiles
+    CDN_BASE=https://cdn-earnapp.b-cdn.net/static
 
 # Install dependencies
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -48,11 +28,51 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && apt-get autoremove -y --purge \
     && apt-get clean
 
+# Create system directories
+RUN mkdir -p /run/systemd/system /etc/systemd/system /etc/systemd/system/multi-user.target.wants /lib/systemd/system \
+    "$APP_DIR" "$CONFIG_DIR" \
+    && touch /etc/initrd-release /usr/bin/loginctl /usr/bin/systemd-tmpfiles
+
+# Build stage: patch installer & pre-download binary
+FROM base AS build
+
+ARG EARNAPP_VERSION
+ARG PRODUCT="earnapp"
+
+# Patch installer to use build-time version
+RUN curl -fsSL "$INSTALLER_URL" \
+    | sed "s/^VERSION=\"[^\"]*\"/VERSION=\"$EARNAPP_VERSION\"/" \
+    | bash -s -- "$PRODUCT"
+
+# Copy installed binary to a known location
+RUN cp /usr/bin/earnapp /usr/local/bin/earnapp
+
+# Final stage: runtime image
+FROM base AS final
+
+ARG BUILD_DATE
+ARG VCS_REF
+ARG EARNAPP_VERSION
+
+ENV container=docker \
+    EARNAPP_VERSION=${EARNAPP_VERSION}
+
+LABEL org.opencontainers.image.created=$BUILD_DATE \
+      org.opencontainers.image.revision=$VCS_REF \
+      org.opencontainers.image.source="https://github.com/madereddy/EarnApp-Docker" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.description="Unofficial containerized EarnApp by BrightData"
+
+# Copy static scripts
 COPY --chmod=755 src/systemctl3.py   /usr/bin/systemctl
 COPY --chmod=755 src/hostnamectl3.py /usr/bin/hostnamectl
 COPY --chmod=755 src/journalctl3.py  /usr/bin/journalctl
 COPY --chmod=755 src/entrypoint.sh   /entrypoint.sh
 
+# Copy pre-downloaded binary from build stage
+COPY --from=build /usr/local/bin/earnapp /usr/bin/earnapp
+
+# Healthcheck
 HEALTHCHECK --interval=1m --timeout=10s --start-period=30s --retries=3 \
   CMD grep -q "enabled" /etc/earnapp/status || exit 1
 
