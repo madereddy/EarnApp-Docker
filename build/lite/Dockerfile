@@ -27,24 +27,26 @@ RUN apt-get update \
         curl \
         ca-certificates \
         wget \
+        git \
         sudo \
         openssl \
         python3 \
         lsb-release \
     && update-ca-certificates \
     && mkdir -p "$APP_DIR" "$CONFIG_DIR" /run/systemd/system \
-    && SYSTEMCTL_BASE="https://raw.githubusercontent.com/gdraheim/docker-systemctl-replacement/master/files/docker" \
-    && wget -q "$SYSTEMCTL_BASE/systemctl3.py"        -O /usr/bin/systemctl \
-    && wget -q "$SYSTEMCTL_BASE/hostnamectl3.py"      -O /usr/bin/hostnamectl \
-    && wget -q "$SYSTEMCTL_BASE/journalctl3.py"       -O /usr/bin/journalctl \
-    && wget -q "$SYSTEMCTL_BASE/loginctl3.py"         -O /usr/bin/loginctl \
-    && wget -q "$SYSTEMCTL_BASE/systemd-tmpfiles3.py" -O /usr/bin/systemd-tmpfiles \
+    && git clone --depth=1 https://github.com/gdraheim/docker-systemctl-replacement.git /tmp/systemctl-replacement \
+    && cp /tmp/systemctl-replacement/files/docker/systemctl3.py        /usr/bin/systemctl \
+    && cp /tmp/systemctl-replacement/files/docker/hostnamectl3.py      /usr/bin/hostnamectl \
+    && cp /tmp/systemctl-replacement/files/docker/journalctl3.py       /usr/bin/journalctl \
+    && cp /tmp/systemctl-replacement/files/docker/loginctl3.py         /usr/bin/loginctl \
+    && cp /tmp/systemctl-replacement/files/docker/systemd-tmpfiles3.py /usr/bin/systemd-tmpfiles \
     && chmod +x \
         /usr/bin/systemctl \
         /usr/bin/hostnamectl \
         /usr/bin/journalctl \
         /usr/bin/loginctl \
         /usr/bin/systemd-tmpfiles \
+    && rm -rf /tmp/systemctl-replacement \
     && if [ -z "$EARNAPP_VERSION" ]; then \
         EARNAPP_VERSION=$(curl -fsSL "$INSTALLER_URL" | grep VERSION= | cut -d'"' -f2); \
     fi \
@@ -61,7 +63,7 @@ RUN apt-get update \
     && echo "[INFO] Downloading $FILE" \
     && curl -fL "$CDN_BASE/$FILE" -o "$BIN_PATH" \
     && chmod +x "$BIN_PATH" \
-    && apt-get purge -y --auto-remove curl \
+    && apt-get purge -y --auto-remove curl git \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 COPY --chmod=755 src/entrypoint.sh /entrypoint.sh
