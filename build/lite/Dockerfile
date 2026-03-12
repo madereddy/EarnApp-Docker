@@ -3,6 +3,7 @@ FROM ubuntu:22.04@sha256:0e5e4a57c2499249aafc3b40fcd541e9a456aab7296681a3994d631
 ARG EARNAPP_VERSION=""
 ARG INSTALLER_URL=https://brightdata.com/static/earnapp/install.sh
 ARG CDN_BASE=https://cdn-earnapp.b-cdn.net/static
+ARG TARGETARCH
 ARG BUILD_DATE
 ARG VCS_REF
 
@@ -47,16 +48,15 @@ RUN apt-get update \
     && if [ -z "$EARNAPP_VERSION" ]; then \
         EARNAPP_VERSION=$(curl -fsSL "$INSTALLER_URL" | grep VERSION= | cut -d'"' -f2); \
     fi \
-    && ARCH=$(uname -m) \
-    && echo "[INFO] Installing EarnApp $EARNAPP_VERSION for $ARCH" \
-    && if [ "$ARCH" = "x86_64" ]; then \
+    && echo "[INFO] Installing EarnApp $EARNAPP_VERSION for $TARGETARCH" \
+    && if [ "$TARGETARCH" = "amd64" ]; then \
         FILE="earnapp-x64-$EARNAPP_VERSION"; \
-    elif [ "$ARCH" = "aarch64" ]; then \
+    elif [ "$TARGETARCH" = "arm64" ]; then \
         FILE="earnapp-aarch64-$EARNAPP_VERSION"; \
-    elif [ "$ARCH" = "armv7l" ]; then \
+    elif [ "$TARGETARCH" = "arm" ]; then \
         FILE="earnapp-arm7l-$EARNAPP_VERSION"; \
     else \
-        echo "[ERROR] Unsupported architecture: $ARCH"; exit 1; \
+        echo "[ERROR] Unsupported architecture: $TARGETARCH"; exit 1; \
     fi \
     && echo "[INFO] Downloading $FILE" \
     && curl -fL "$CDN_BASE/$FILE" -o "$BIN_PATH" \
