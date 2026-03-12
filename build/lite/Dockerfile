@@ -20,7 +20,7 @@ LABEL org.opencontainers.image.created=$BUILD_DATE \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.description="Unofficial containerized EarnApp by BrightData"
 
-# Install dependencies, systemctl replacement, and EarnApp binary
+# Install dependencies, systemctl replacement, and EarnApp binary in a single layer
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         curl \
@@ -32,6 +32,18 @@ RUN apt-get update \
         lsb-release \
     && update-ca-certificates \
     && mkdir -p "$APP_DIR" "$CONFIG_DIR" /run/systemd/system \
+    && SYSTEMCTL_BASE="https://raw.githubusercontent.com/gdraheim/docker-systemctl-replacement/1e9f41ccb25e3e45c4d06439b9fa6f3a7c5a0d0e/files/docker" \
+    && wget -q "$SYSTEMCTL_BASE/systemctl3.py"        -O /usr/bin/systemctl \
+    && wget -q "$SYSTEMCTL_BASE/hostnamectl3.py"      -O /usr/bin/hostnamectl \
+    && wget -q "$SYSTEMCTL_BASE/journalctl3.py"       -O /usr/bin/journalctl \
+    && wget -q "$SYSTEMCTL_BASE/loginctl3.py"         -O /usr/bin/loginctl \
+    && wget -q "$SYSTEMCTL_BASE/systemd-tmpfiles3.py" -O /usr/bin/systemd-tmpfiles \
+    && chmod +x \
+        /usr/bin/systemctl \
+        /usr/bin/hostnamectl \
+        /usr/bin/journalctl \
+        /usr/bin/loginctl \
+        /usr/bin/systemd-tmpfiles \
     && if [ -z "$EARNAPP_VERSION" ]; then \
         EARNAPP_VERSION=$(curl -fsSL "$INSTALLER_URL" | grep VERSION= | cut -d'"' -f2); \
     fi \
@@ -51,20 +63,6 @@ RUN apt-get update \
     && chmod +x "$BIN_PATH" \
     && apt-get purge -y --auto-remove curl \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-# Install systemctl replacement and remove shell stubs no longer needed
-ARG SYSTEMCTL_REPO=https://raw.githubusercontent.com/gdraheim/docker-systemctl-replacement/master/files/docker
-RUN wget -q "$SYSTEMCTL_REPO/systemctl3.py"      -O /usr/bin/systemctl \
-    && wget -q "$SYSTEMCTL_REPO/hostnamectl3.py"  -O /usr/bin/hostnamectl \
-    && wget -q "$SYSTEMCTL_REPO/journalctl3.py"   -O /usr/bin/journalctl \
-    && wget -q "$SYSTEMCTL_REPO/loginctl3.py"     -O /usr/bin/loginctl \
-    && wget -q "$SYSTEMCTL_REPO/systemd-tmpfiles3.py" -O /usr/bin/systemd-tmpfiles \
-    && chmod +x \
-        /usr/bin/systemctl \
-        /usr/bin/hostnamectl \
-        /usr/bin/journalctl \
-        /usr/bin/loginctl \
-        /usr/bin/systemd-tmpfiles
 
 COPY --chmod=755 src/entrypoint.sh /entrypoint.sh
 
