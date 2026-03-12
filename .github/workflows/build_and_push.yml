@@ -1,4 +1,4 @@
-name: "Build and Push to Docker Hub"
+name: Build and Push to Docker Hub
 
 on:
   push:
@@ -12,11 +12,39 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
+
+      - name: Read EarnApp version
+        id: version
+        run: |
+          if [ ! -f ".earnapp-version" ]; then
+            echo "[ERROR] .earnapp-version file not found"
+            exit 1
+          fi
+
+          VERSION=$(tr -d '\n' < .earnapp-version)
+
+          if [ -z "$VERSION" ]; then
+            echo "[ERROR] .earnapp-version file is empty"
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
+
+      - name: Set image tags
+        id: tags
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+
+          if [[ "${GITHUB_REF}" == "refs/heads/master" ]]; then
+            echo "tags=madereddy/earnapp:latest,madereddy/earnapp:${VERSION}" >> $GITHUB_OUTPUT
+          else
+            echo "tags=madereddy/earnapp:test,madereddy/earnapp:${VERSION}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -27,20 +55,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Get EarnApp version and build metadata
-        id: meta
-        run: |
-          VERSION=$(curl -fsSL https://brightdata.com/static/earnapp/install.sh \
-            | grep 'VERSION=' | cut -d'"' -f2)
-          if [ -z "$VERSION" ]; then
-            echo "[ERROR] Failed to resolve EarnApp version"
-            exit 1
-          fi
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
-
-      - name: Build and push (master)
-        if: github.ref == 'refs/heads/master'
+      - name: Build and push image
         uses: docker/build-push-action@v6
         with:
           context: build/lite
@@ -49,32 +64,11 @@ jobs:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          tags: ${{ steps.tags.outputs.tags }}
           build-args: |
-            EARNAPP_VERSION=${{ steps.meta.outputs.version }}
-            BUILD_DATE=${{ steps.meta.outputs.date }}
+            EARNAPP_VERSION=${{ steps.version.outputs.version }}
+            BUILD_DATE=${{ steps.version.outputs.date }}
             VCS_REF=${{ github.sha }}
-          tags: |
-            madereddy/earnapp:latest
-            madereddy/earnapp:${{ steps.meta.outputs.version }}
-
-      - name: Build and push (test)
-        if: github.ref == 'refs/heads/test'
-        uses: docker/build-push-action@v6
-        with:
-          context: build/lite
-          file: build/lite/Dockerfile
-          push: true
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            EARNAPP_VERSION=${{ steps.meta.outputs.version }}
-            BUILD_DATE=${{ steps.meta.outputs.date }}
-            VCS_REF=${{ github.sha }}
-          labels: |
-            org.opencontainers.image.description=WARNING: test build, not for production use
-          tags: |
-            madereddy/earnapp:test
 
       - name: Update Docker Hub README
         if: github.ref == 'refs/heads/master'
