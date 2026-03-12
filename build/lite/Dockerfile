@@ -2,6 +2,7 @@ FROM ubuntu:22.04@sha256:0e5e4a57c2499249aafc3b40fcd541e9a456aab7296681a3994d631
 
 ARG EARNAPP_VERSION=""
 ARG INSTALLER_URL=https://brightdata.com/static/earnapp/install.sh
+ARG TARGETARCH
 ARG BUILD_DATE
 ARG VCS_REF
 
@@ -60,11 +61,26 @@ RUN curl -L https://raw.githubusercontent.com/rickyn-croesus/docker-systemctl-re
         /usr/bin/loginctl \
         /usr/bin/systemd-tmpfiles
 
-# Install EarnApp via install script
-RUN curl -fsSL "$INSTALLER_URL" -o /tmp/earnapp.sh \
-    && echo "yes" | bash /tmp/earnapp.sh \
-    && rm -f /tmp/earnapp.sh \
+# Install EarnApp binary
+RUN if [ -z "$EARNAPP_VERSION" ]; then \
+        EARNAPP_VERSION=$(curl -fsSL "$INSTALLER_URL" | grep VERSION= | cut -d'"' -f2); \
+    fi \
+    && echo "[INFO] Installing EarnApp $EARNAPP_VERSION for $TARGETARCH" \
+    && if [ "$TARGETARCH" = "amd64" ]; then \
+        FILE="earnapp-x64-$EARNAPP_VERSION"; \
+    elif [ "$TARGETARCH" = "arm64" ]; then \
+        FILE="earnapp-aarch64-$EARNAPP_VERSION"; \
+    elif [ "$TARGETARCH" = "arm" ]; then \
+        FILE="earnapp-arm7l-$EARNAPP_VERSION"; \
+    else \
+        echo "[ERROR] Unsupported architecture: $TARGETARCH"; exit 1; \
+    fi \
+    && echo "[INFO] Downloading $FILE" \
+    && curl -fL "$CDN_BASE/$FILE" -o "$BIN_PATH" \
+    && chmod +x "$BIN_PATH" \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+COPY --chmod=755 src/entrypoint.sh /entrypoint.sh
 
 COPY --chmod=755 src/entrypoint.sh /entrypoint.sh
 
