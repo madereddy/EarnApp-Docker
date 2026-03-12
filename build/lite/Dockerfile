@@ -41,7 +41,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         openssl \
         python3 \
         lsb-release \
-    && update-ca-certificates
+    && update-ca-certificates && apt-get clean && apt-get autoremove --purge
 
 # Install systemctl replacement
 RUN curl -L https://raw.githubusercontent.com/rickyn-croesus/docker-systemctl-replacement/1e9f41ccb25e3e45c4d06439b9fa6f3a7c5a0d0e/files/docker/systemctl3.py \
@@ -64,7 +64,8 @@ RUN curl -L https://raw.githubusercontent.com/rickyn-croesus/docker-systemctl-re
 RUN curl -fsSL "$INSTALLER_URL" -o /tmp/earnapp.sh \
     && echo "yes" | bash /tmp/earnapp.sh \
     && rm -f /tmp/earnapp.sh \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
+    && apt-get purge -y --auto-remove curl ca-certificates
 
 COPY --chmod=755 src/entrypoint.sh /entrypoint.sh
 
