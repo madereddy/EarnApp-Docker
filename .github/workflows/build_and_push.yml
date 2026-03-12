@@ -26,7 +26,6 @@ jobs:
             echo "[ERROR] .earnapp-version file not found"
             exit 1
           fi
-
           VERSION=$(tr -d '\n' < .earnapp-version)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
@@ -62,8 +61,16 @@ jobs:
             BUILD_DATE=${{ steps.version.outputs.date }}
             VCS_REF=${{ github.sha }}
           tags: ${{ steps.tags.outputs.tags }}
-          cache-from: type=registry,ref=madereddy/earnapp:cache
-          cache-to: type=registry,ref=madereddy/earnapp:cache,mode=max
+          cache-from: |
+            type=registry,ref=madereddy/earnapp:cache
+            type=local,src=/tmp/.buildx-cache
+          cache-to: |
+            type=registry,ref=madereddy/earnapp:cache,mode=max
+            type=local,dest=/tmp/.buildx-cache,mode=max
+          # enable BuildKit local cache mounts for apt
+          cache-mounts: |
+            type=cache,target=/var/cache/apt,sharing=locked
+            type=cache,target=/var/lib/apt/lists,sharing=locked
 
       - name: Update Docker Hub README
         if: github.ref == 'refs/heads/master'
