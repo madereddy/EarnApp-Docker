@@ -9,6 +9,7 @@ BIN_PATH="${BIN_PATH:-/usr/bin/earnapp}"
 CONFIG_DIR="${CONFIG_DIR:-/etc/earnapp}"
 INSTALLER_URL="${INSTALLER_URL:-https://brightdata.com/static/earnapp/install.sh}"
 CDN_BASE="${CDN_BASE:-https://cdn-earnapp.b-cdn.net/static}"
+EARNAPP_VERSION="${EARNAPP_VERSION:-}"  # optional pinned version
 
 # --------------------------
 # Debug mode
@@ -19,35 +20,34 @@ if [[ "${DEBUG_MODE:-}" == "1" ]]; then
 fi
 
 # --------------------------
-# Install EarnApp if not already installed
+# Ensure directories exist
+# --------------------------
+mkdir -p "$APP_DIR" "$CONFIG_DIR"
+touch "$CONFIG_DIR/status"
+
+# --------------------------
+# Install EarnApp if binary missing
 # --------------------------
 if [[ ! -x "$BIN_PATH" ]]; then
     echo "[INFO] EarnApp binary not found, installing..."
 
-    if [[ -n "${EARNAPP_VERSION:-}" ]]; then
-        # Install specific version directly from CDN
+    if [[ -n "$EARNAPP_VERSION" ]]; then
         echo "[INFO] Installing pinned version: $EARNAPP_VERSION"
         ARCH=$(uname -m)
-        if [ "$ARCH" = "x86_64" ]; then
-            FILE="earnapp-x64-$EARNAPP_VERSION"
-        elif [ "$ARCH" = "aarch64" ]; then
-            FILE="earnapp-aarch64-$EARNAPP_VERSION"
-        elif [ "$ARCH" = "armv7l" ]; then
-            FILE="earnapp-arm7l-$EARNAPP_VERSION"
-        else
-            echo "[ERROR] Unsupported architecture: $ARCH"
-            exit 1
-        fi
+        case "$ARCH" in
+            x86_64) FILE="earnapp-x64-$EARNAPP_VERSION" ;;
+            aarch64) FILE="earnapp-aarch64-$EARNAPP_VERSION" ;;
+            armv7l) FILE="earnapp-arm7l-$EARNAPP_VERSION" ;;
+            *) echo "[ERROR] Unsupported architecture: $ARCH"; exit 1 ;;
+        esac
         curl -fsSL "$CDN_BASE/$FILE" -o "$BIN_PATH" \
-            || { echo "[ERROR] Failed to download EarnApp $EARNAPP_VERSION. Check the version string and your internet connection."; exit 1; }
+            || { echo "[ERROR] Failed to download EarnApp $EARNAPP_VERSION"; exit 1; }
         chmod +x "$BIN_PATH"
     else
-        # Install latest version via install script
         echo "[INFO] No EARNAPP_VERSION set, installing latest version..."
         curl -fsSL "$INSTALLER_URL" -o /tmp/earnapp.sh \
-            || { echo "[ERROR] Failed to download EarnApp installer. Check your internet connection."; exit 1; }
-        echo "yes" | bash /tmp/earnapp.sh \
-            || { echo "[ERROR] EarnApp installation failed."; exit 1; }
+            || { echo "[ERROR] Failed to download installer"; exit 1; }
+        echo "yes" | bash /tmp/earnapp.sh || { echo "[ERROR] Installer failed"; exit 1; }
         rm -f /tmp/earnapp.sh
     fi
 
@@ -55,27 +55,11 @@ if [[ ! -x "$BIN_PATH" ]]; then
 fi
 
 # --------------------------
-# Validate binary
-# --------------------------
-if [[ ! -x "$BIN_PATH" ]]; then
-    echo "[ERROR] EarnApp binary not found at $BIN_PATH after installation attempt."
-    exit 1
-fi
-
-# --------------------------
-# Prepare directories and config files
-# --------------------------
-mkdir -p "$APP_DIR" "$CONFIG_DIR"
-touch "$CONFIG_DIR/status"
-
-# --------------------------
 # UUID handling
 # --------------------------
 UUID_SOURCE="unknown"
-
 if [[ -z "${EARNAPP_UUID:-}" ]]; then
-    echo "[WARN] EARNAPP_UUID not set — EarnApp will generate its own UUID."
-    echo "[WARN] Ensure /etc/earnapp is mounted as a volume or your UUID will be lost on restart."
+    echo "[WARN] EARNAPP_UUID not set — UUID will be generated."
     if [[ -f "$CONFIG_DIR/uuid" ]]; then
         UUID_SOURCE="volume"
     else
@@ -85,28 +69,23 @@ else
     echo -n "$EARNAPP_UUID" > "$CONFIG_DIR/uuid"
     UUID_SOURCE="env"
 fi
-
 chmod 600 "$CONFIG_DIR/"*
 
 # --------------------------
-# Warn if /etc/earnapp is not a volume mount
+# Warn if /etc/earnapp not mounted as volume
 # --------------------------
 if ! grep -q " $CONFIG_DIR " /proc/mounts 2>/dev/null; then
     echo "############################################################"
     echo "[WARN] /etc/earnapp is NOT mounted as a volume!"
-    echo "[WARN] Your UUID will be lost every time this container restarts."
-    echo "[WARN] You will need to re-register this device on each restart."
-    echo "[WARN] To persist your UUID, mount a volume:"
-    echo "[WARN]   docker run -v /path/to/earnapp:/etc/earnapp ..."
-    echo "############################################################"
-    # No volume and no env UUID — remove any stale uuid so EarnApp generates a fresh one
+    echo "[WARN] Your UUID may be lost on container restart."
     if [[ -z "${EARNAPP_UUID:-}" ]]; then
         rm -f "$CONFIG_DIR/uuid"
     fi
+    echo "############################################################"
 fi
 
 # --------------------------
-# Start EarnApp early so UUID is generated before we try to read it
+# Start EarnApp early for UUID generation
 # --------------------------
 echo "[INFO] Starting EarnApp..."
 "$BIN_PATH" stop 2>/dev/null || true
@@ -115,27 +94,23 @@ sleep 1
 sleep 2
 
 # --------------------------
-# Show UUID and registration link
+# Wait for UUID registration (with backoff)
 # --------------------------
 echo ""
 echo "------------------------------------------------------------"
+DEVICE_ID="unknown"
 if [[ -n "${EARNAPP_UUID:-}" ]]; then
-    # UUID was manually provided via env var — already written to file, no need to wait
     DEVICE_ID=$(echo -n "$EARNAPP_UUID" | tr -d '[:space:]')
 else
-    # UUID not provided — wait for EarnApp to generate it with exponential backoff
-    # Registration can take 2-3 minutes on first run depending on network conditions
     uuid_backoff=2
     uuid_max_backoff=30
-    DEVICE_ID="unknown"
     MAX_ATTEMPTS=5
     for i in $(seq 1 $MAX_ATTEMPTS); do
         DEVICE_ID=$(("$BIN_PATH" showid 2>/dev/null || true) | tr -d '[:space:]')
         if [[ -n "$DEVICE_ID" && "$DEVICE_ID" != "undefined" ]]; then
             break
         fi
-        echo "[INFO] Waiting for EarnApp to register... (attempt $i/$MAX_ATTEMPTS, retrying in ${uuid_backoff}s)"
-        # Restart EarnApp on each attempt to retry registration
+        echo "[INFO] Waiting for EarnApp to register... (attempt $i/$MAX_ATTEMPTS, retry ${uuid_backoff}s)"
         "$BIN_PATH" stop 2>/dev/null || true
         sleep 1
         "$BIN_PATH" start 2>/dev/null || true
@@ -144,40 +119,32 @@ else
         [[ $uuid_backoff -gt $uuid_max_backoff ]] && uuid_backoff=$uuid_max_backoff
     done
 
-    # Fallback to file if showid still not ready after all retries
     if [[ "$DEVICE_ID" == "unknown" || "$DEVICE_ID" == "undefined" ]]; then
         DEVICE_ID=$(cat "$CONFIG_DIR/uuid" 2>/dev/null | tr -d '[:space:]' || echo "unknown")
     fi
 fi
 
-# Sanity check — validate UUID looks correct before printing registration link
+# --------------------------
+# Show registration info
+# --------------------------
 if [[ "$DEVICE_ID" == "unknown" ]]; then
-    echo "[WARN] UUID not available yet — EarnApp may still be registering in the background."
-    echo "[INFO] This is normal on first run or slow networks. Registration can take several minutes."
-    echo "[INFO] Once ready, run: docker exec earnapp earnapp showid"
-    echo "[INFO] Then visit:      https://earnapp.com/r/<your-device-id>"
-elif [[ ! "$DEVICE_ID" =~ ^sdk-node-[a-f0-9]{32}$ ]]; then
-    echo "[WARN] Device ID format looks unexpected: $DEVICE_ID"
-    echo "[INFO] Device ID:   $DEVICE_ID"
-    echo "[INFO] UUID source: $UUID_SOURCE"
-    echo "[INFO] If this device is not yet registered, visit:"
-    echo "[INFO] https://earnapp.com/r/$DEVICE_ID"
+    echo "[WARN] UUID not available yet — registration may still be in progress."
+    echo "[INFO] Check: docker exec <container> earnapp showid"
+    echo "[INFO] Visit: https://earnapp.com/r/<your-device-id>"
 else
-    echo "[INFO] Device ID:   $DEVICE_ID"
+    echo "[INFO] Device ID: $DEVICE_ID"
     case "$UUID_SOURCE" in
-        env)       echo "[INFO] UUID source: environment variable" ;;
-        volume)    echo "[INFO] UUID source: existing volume mount (persisted from previous run)" ;;
-        generated) echo "[INFO] UUID source: auto-generated by EarnApp (new device)" ;;
-        *)         echo "[INFO] UUID source: unknown" ;;
+        env) echo "[INFO] UUID source: environment variable" ;;
+        volume) echo "[INFO] UUID source: existing volume" ;;
+        generated) echo "[INFO] UUID source: auto-generated" ;;
     esac
-    echo "[INFO] If this device is not yet registered, visit:"
-    echo "[INFO] https://earnapp.com/r/$DEVICE_ID"
+    echo "[INFO] Registration link: https://earnapp.com/r/$DEVICE_ID"
 fi
 echo "------------------------------------------------------------"
 echo ""
 
 # --------------------------
-# Run EarnApp with auto-restart loop
+# Main loop — auto-restart EarnApp
 # --------------------------
 backoff=5
 MAX_BACKOFF=300
@@ -191,7 +158,7 @@ while true; do
         backoff=5
         echo "[INFO] EarnApp exited after ${run_duration}s, restarting in ${backoff}s..."
     else
-        echo "[WARN] EarnApp crashed after ${run_duration}s, backing off ${backoff}s before restart..."
+        echo "[WARN] EarnApp crashed after ${run_duration}s, backing off ${backoff}s..."
         sleep "$backoff"
         backoff=$((backoff * 2))
         [[ $backoff -gt $MAX_BACKOFF ]] && backoff=$MAX_BACKOFF
