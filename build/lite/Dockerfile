@@ -52,7 +52,9 @@ RUN printf '#!/bin/sh\nhostname\n' > /usr/bin/hostnamectl \
     && printf '#!/bin/sh\necho "Distributor ID: Debian"\necho "Description: %s"\necho "Release: %s"\necho "Codename: %s"\n' \
        "$PRETTY_NAME" "$VERSION_ID" "$VERSION_CODENAME" \
        > /usr/bin/lsb_release \
-    && chmod +x /usr/bin/lsb_release
+    && chmod +x /usr/bin/lsb_release \
+    && printf '#!/bin/sh\nexit 0\n' > /usr/bin/systemctl \
+    && chmod +x /usr/bin/systemctl
 
 COPY --chmod=755 src/entrypoint.sh /entrypoint.sh
 
