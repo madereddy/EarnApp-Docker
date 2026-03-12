@@ -30,7 +30,9 @@ RUN mkdir -p \
     && touch /etc/initrd-release
 
 # Install dependencies
-RUN apt-get update \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update \
     && apt-get install -y --no-install-recommends \
         curl \
         ca-certificates \
@@ -39,8 +41,7 @@ RUN apt-get update \
         openssl \
         python3 \
         lsb-release \
-    && update-ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    && update-ca-certificates
 
 # Install systemctl replacement
 RUN curl -L https://raw.githubusercontent.com/rickyn-croesus/docker-systemctl-replacement/1e9f41ccb25e3e45c4d06439b9fa6f3a7c5a0d0e/files/docker/systemctl3.py \
