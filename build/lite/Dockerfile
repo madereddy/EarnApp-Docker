@@ -27,7 +27,7 @@ RUN mkdir -p \
         /lib/systemd/system \
         "$APP_DIR" \
         "$CONFIG_DIR" \
-    && touch /etc/initrd-release
+    && touch /etc/initrd-release && touch /usr/bin/loginctl && touch /usr/bin/systemd-tmpfiles
 
 # Install dependencies
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -52,7 +52,7 @@ RUN curl -fsSL "$INSTALLER_URL" -o /tmp/earnapp.sh \
     && echo "yes" | bash /tmp/earnapp.sh \
     && rm -f /tmp/earnapp.sh \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
-    && apt-get purge -y --auto-remove curl ca-certificates wget openssl sudo
+    && apt-get purge -y --auto-remove curl ca-certificates wget openssl
 
 COPY --chmod=755 src/entrypoint.sh /entrypoint.sh
 
