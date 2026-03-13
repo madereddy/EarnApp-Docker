@@ -16,8 +16,8 @@ EARNAPP_VERSION="${EARNAPP_VERSION:-}"
 # Debug mode
 # --------------------------
 if [[ "$DEBUG_MODE" == "1" ]]; then
-    echo "[INFO] DEBUG_MODE enabled, launching shell..."
-    exec bash
+    echo "[INFO] DEBUG_MODE enabled."
+    set -x
 fi
 
 # --------------------------
