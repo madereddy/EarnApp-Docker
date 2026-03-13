@@ -8,7 +8,6 @@ APP_DIR="${APP_DIR:-/app/src/}"
 BIN_PATH="${BIN_PATH:-/usr/bin/earnapp}"
 CONFIG_DIR="${CONFIG_DIR:-/etc/earnapp}"
 INSTALLER_URL="${INSTALLER_URL:-https://brightdata.com/static/earnapp/install.sh}"
-CDN_BASE="${CDN_BASE:-https://cdn-earnapp.b-cdn.net/static}"
 DEBUG_MODE="${DEBUG_MODE:-0}"
 EARNAPP_VERSION="${EARNAPP_VERSION:-}"
 
@@ -33,7 +32,8 @@ if [[ ! -x "$BIN_PATH" ]]; then
     echo "[INFO] EarnApp binary not found, installing..."
 
     TMP_INSTALL="/tmp/earnapp.sh"
-    curl -fsSL "$INSTALLER_URL" -o "$TMP_INSTALL"
+    curl -fsSL "$INSTALLER_URL" -o "$TMP_INSTALL" \
+        || { echo "[ERROR] Failed to download EarnApp installer. Check your internet connection."; exit 1; }
 
     # Patch install.sh to pin version if EARNAPP_VERSION is defined
     if [[ -n "${EARNAPP_VERSION:-}" ]]; then
@@ -42,7 +42,7 @@ if [[ ! -x "$BIN_PATH" ]]; then
     fi
 
     if [[ "$DEBUG_MODE" == "1" ]]; then
-        echo "yes" | bash "$TMP_INSTALL"
+        echo "yes" | bash "$TMP_INSTALL" || { echo "[ERROR] EarnApp installation failed."; exit 1; }
     else
         echo "yes" | bash "$TMP_INSTALL" &>/dev/null
     fi
