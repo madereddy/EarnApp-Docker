@@ -62,6 +62,23 @@ if [[ ! -x "$BIN_PATH" ]]; then
 fi
 
 # --------------------------
+# Wait for service file to be created by finish_install
+# --------------------------
+SERVICE_FILE="/etc/systemd/system/earnapp.service"
+echo "[INFO] Waiting for EarnApp service file..."
+WAIT=0
+until [[ -f "$SERVICE_FILE" ]] || [[ $WAIT -ge 30 ]]; do
+    sleep 1
+    WAIT=$((WAIT + 1))
+done
+
+if [[ ! -f "$SERVICE_FILE" ]]; then
+    echo "[ERROR] EarnApp service file not found after ${WAIT}s. Installation may have failed."
+    exit 1
+fi
+echo "[INFO] Service file found after ${WAIT}s."
+
+# --------------------------
 # UUID handling
 # --------------------------
 if [[ -n "${EARNAPP_UUID:-}" ]]; then
@@ -92,8 +109,6 @@ fi
 # Start EarnApp via systemctl
 # --------------------------
 echo "[INFO] Starting EarnApp via systemctl..."
-systemctl stop earnapp 2>/dev/null || true
-sleep 1
 systemctl start earnapp 2>/dev/null || true
 sleep 2
 
@@ -111,9 +126,6 @@ for i in $(seq 1 $MAX_ATTEMPTS); do
         break
     fi
     echo "[INFO] Waiting for EarnApp registration (attempt $i/$MAX_ATTEMPTS, retrying in ${BACKOFF}s)..."
-    systemctl stop earnapp 2>/dev/null || true
-    sleep 1
-    systemctl start earnapp 2>/dev/null || true
     sleep "$BACKOFF"
     BACKOFF=$((BACKOFF * 2))
     [[ $BACKOFF -gt $MAX_BACKOFF ]] && BACKOFF=$MAX_BACKOFF
@@ -176,9 +188,4 @@ while true; do
         BACKOFF=$((BACKOFF * 2))
         [[ $BACKOFF -gt $MAX_BACKOFF ]] && BACKOFF=$MAX_BACKOFF
     fi
-
-    systemctl stop earnapp 2>/dev/null || true
-    sleep 1
-    systemctl start earnapp 2>/dev/null || true
-    sleep 2
 done
