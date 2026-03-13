@@ -26,30 +26,6 @@ mkdir -p "$APP_DIR" "$CONFIG_DIR"
 touch "$CONFIG_DIR/status"
 
 # --------------------------
-# Install systemctl shim
-# Wraps systemctl3.py to retry "start" calls until the service file exists.
-# This fixes EarnApp's installer calling "systemctl start earnapp" before
-# finish_install has written the .service unit files.
-# --------------------------
-mv /usr/bin/systemctl /usr/bin/systemctl-real
-cat > /usr/bin/systemctl << 'SHIM'
-#!/usr/bin/env bash
-if [[ "$1" == "start" && "$2" == earnapp* ]]; then
-    SERVICE_FILE="/etc/systemd/system/${2}.service"
-    WAIT=0
-    until [[ -f "$SERVICE_FILE" ]] || [[ $WAIT -ge 20 ]]; do
-        sleep 0.5
-        WAIT=$((WAIT + 1))
-    done
-    if [[ ! -f "$SERVICE_FILE" ]]; then
-        echo "[SHIM] Timed out waiting for $SERVICE_FILE" >&2
-    fi
-fi
-exec /usr/bin/systemctl-real "$@"
-SHIM
-chmod +x /usr/bin/systemctl
-
-# --------------------------
 # Install EarnApp at runtime via patched installer
 # --------------------------
 if [[ ! -x "$BIN_PATH" ]]; then
