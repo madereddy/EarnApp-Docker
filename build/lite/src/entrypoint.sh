@@ -106,13 +106,6 @@ if ! grep -q " $CONFIG_DIR " /proc/mounts 2>/dev/null; then
 fi
 
 # --------------------------
-# Start EarnApp via systemctl
-# --------------------------
-echo "[INFO] Starting EarnApp via systemctl..."
-systemctl start earnapp 2>/dev/null || true
-sleep 2
-
-# --------------------------
 # Wait for UUID registration with exponential backoff
 # --------------------------
 DEVICE_ID="unknown"
@@ -169,23 +162,24 @@ fi
 echo "------------------------------------------------------------"
 
 # --------------------------
-# Run EarnApp loop
+# Keep container alive — EarnApp is managed by systemctl3.py
+# Tail the log file so activity is visible in docker logs
 # --------------------------
-BACKOFF=5
-MAX_BACKOFF=300
+LOG_FILE="$CONFIG_DIR/earnapp_fetch.log"
 
-while true; do
-    START_TIME=$(date +%s)
-    "$BIN_PATH" run || true
-    RUN_DURATION=$(( $(date +%s) - START_TIME ))
+echo "[INFO] EarnApp is running. Tailing $LOG_FILE for activity..."
+echo "[INFO] Use 'docker exec <container> earnapp status' to check status."
 
-    if [[ $RUN_DURATION -gt 60 ]]; then
-        BACKOFF=5
-        echo "[INFO] EarnApp exited after ${RUN_DURATION}s, restarting in ${BACKOFF}s..."
-    else
-        echo "[WARN] EarnApp crashed after ${RUN_DURATION}s, backing off ${BACKOFF}s..."
-        sleep "$BACKOFF"
-        BACKOFF=$((BACKOFF * 2))
-        [[ $BACKOFF -gt $MAX_BACKOFF ]] && BACKOFF=$MAX_BACKOFF
-    fi
+# Wait for log file to appear (may take a moment on first run)
+WAIT=0
+until [[ -f "$LOG_FILE" ]] || [[ $WAIT -ge 30 ]]; do
+    sleep 1
+    WAIT=$((WAIT + 1))
 done
+
+if [[ -f "$LOG_FILE" ]]; then
+    exec tail -F "$LOG_FILE"
+else
+    echo "[WARN] Log file $LOG_FILE not found after ${WAIT}s. Keeping container alive silently."
+    exec sleep infinity
+fi
