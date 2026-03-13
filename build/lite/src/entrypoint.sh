@@ -42,10 +42,13 @@ if [[ ! -x "$BIN_PATH" ]]; then
     fi
 
     if [[ "$DEBUG_MODE" == "1" ]]; then
-        echo "yes" | bash "$TMP_INSTALL" || { echo "[ERROR] EarnApp installation failed."; exit 1; }
+        echo "yes" | bash "$TMP_INSTALL" \
+            || { echo "[ERROR] EarnApp installation failed."; exit 1; }
     else
-        echo "yes" | bash "$TMP_INSTALL" &>/dev/null
+        echo "yes" | bash "$TMP_INSTALL" &>/dev/null \
+            || { echo "[ERROR] EarnApp installation failed."; exit 1; }
     fi
+
     rm -f "$TMP_INSTALL"
     echo "[INFO] EarnApp installed successfully."
 fi
@@ -67,7 +70,7 @@ if [[ -n "${EARNAPP_UUID:-}" ]]; then
 elif [[ ! -f "$CONFIG_DIR/uuid" ]]; then
     echo "[WARN] No UUID found. EarnApp will generate one automatically."
 fi
-chmod 600 "$CONFIG_DIR/"*
+chmod 600 "$CONFIG_DIR/"* 2>/dev/null || true
 
 # --------------------------
 # Warn if /etc/earnapp is not a volume mount
@@ -123,8 +126,9 @@ fi
 
 # --------------------------
 # Verify uuid and registered file match
+# Only check when EarnApp manages the UUID itself (no env var override)
 # --------------------------
-if [[ -f "$CONFIG_DIR/registered" ]]; then
+if [[ -z "${EARNAPP_UUID:-}" && -f "$CONFIG_DIR/registered" ]]; then
     REGISTERED_ID=$(tr -d '[:space:]' < "$CONFIG_DIR/registered" 2>/dev/null || echo "")
     if [[ -n "$REGISTERED_ID" && "$REGISTERED_ID" != "$DEVICE_ID" ]]; then
         echo "[WARN] UUID mismatch detected:"
