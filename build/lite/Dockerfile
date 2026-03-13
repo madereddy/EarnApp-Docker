@@ -6,8 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     BIN_PATH=/usr/bin/earnapp \
     CONFIG_DIR=/etc/earnapp \
     MALLOC_ARENA_MAX=2 \
-    INSTALLER_URL=https://brightdata.com/static/earnapp/install.sh \
-    CDN_BASE=https://cdn-earnapp.b-cdn.net/static
+    INSTALLER_URL=https://brightdata.com/static/earnapp/install.sh
 
 # Install dependencies with BuildKit caching
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -16,13 +15,10 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         curl \
         ca-certificates \
         wget \
-        sudo \
         openssl \
         python3 \
         lsb-release \
-    && update-ca-certificates \
-    && apt-get autoremove -y --purge \
-    && apt-get clean
+    && update-ca-certificates
 
 # Create system directories
 RUN mkdir -p \
