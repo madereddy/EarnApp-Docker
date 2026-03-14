@@ -162,24 +162,23 @@ fi
 echo "------------------------------------------------------------"
 
 # --------------------------
-# Keep container alive — EarnApp is managed by systemctl3.py
-# Tail the log file so activity is visible in docker logs
+# Run EarnApp loop
 # --------------------------
-LOG_FILE="$CONFIG_DIR/earnapp_fetch.log"
+BACKOFF=5
+MAX_BACKOFF=300
 
-echo "[INFO] EarnApp is running. Tailing $LOG_FILE for activity..."
-echo "[INFO] Use 'docker exec <container> earnapp status' to check status."
+while true; do
+    START_TIME=$(date +%s)
+    "$BIN_PATH" run || true
+    RUN_DURATION=$(( $(date +%s) - START_TIME ))
 
-# Wait for log file to appear (may take a moment on first run)
-WAIT=0
-until [[ -f "$LOG_FILE" ]] || [[ $WAIT -ge 30 ]]; do
-    sleep 1
-    WAIT=$((WAIT + 1))
+    if [[ $RUN_DURATION -gt 60 ]]; then
+        BACKOFF=5
+        echo "[INFO] EarnApp exited after ${RUN_DURATION}s, restarting in ${BACKOFF}s..."
+    else
+        echo "[WARN] EarnApp crashed after ${RUN_DURATION}s, backing off ${BACKOFF}s..."
+        sleep "$BACKOFF"
+        BACKOFF=$((BACKOFF * 2))
+        [[ $BACKOFF -gt $MAX_BACKOFF ]] && BACKOFF=$MAX_BACKOFF
+    fi
 done
-
-if [[ -f "$LOG_FILE" ]]; then
-    exec tail -F "$LOG_FILE"
-else
-    echo "[WARN] Log file $LOG_FILE not found after ${WAIT}s. Keeping container alive silently."
-    exec sleep infinity
-fi
