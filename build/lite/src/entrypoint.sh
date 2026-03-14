@@ -106,6 +106,13 @@ if ! grep -q " $CONFIG_DIR " /proc/mounts 2>/dev/null; then
 fi
 
 # --------------------------
+# Start EarnApp via systemctl
+# --------------------------
+echo "[INFO] Starting EarnApp via systemctl..."
+systemctl start earnapp 2>/dev/null || true
+sleep 2
+
+# --------------------------
 # Wait for UUID registration with exponential backoff
 # --------------------------
 DEVICE_ID="unknown"
