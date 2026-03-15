@@ -28,7 +28,7 @@ RUN mkdir -p \
         /lib/systemd/system \
         "$APP_DIR" \
         "$CONFIG_DIR" \
-    && touch /etc/initrd-release /usr/bin/loginctl /usr/bin/systemd-tmpfiles
+    && touch /usr/bin/loginctl /usr/bin/systemd-tmpfiles
 
 # Final runtime image
 FROM base AS final
