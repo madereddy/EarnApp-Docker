@@ -143,7 +143,7 @@ _proc_sys_stat = "/proc/stat"
 SystemCompatibilityVersion: int = 219
 SysInitTarget: str = "sysinit.target"
 SysInitWait: int = 5 # max for target
-MinimumYield: float = 3.0
+MinimumYield: float = 3
 MinimumTimeoutStartSec: int = 4
 MinimumTimeoutStopSec: int = 4
 DefaultTimeoutStartSec: int = 90   # official value
@@ -3980,24 +3980,16 @@ class Systemctl:
             for cmd in conf.getlist(Service, "ExecStart", []):
                 exe, newcmd = self.unitfiles.expand_cmd(cmd, env, conf)
                 logg.info("%s start %s", runs, shell_cmd(newcmd))
-                import subprocess as _subprocess
-                print("DEBUG env: %s" % env, flush=True)
-                print("DEBUG cmd: %s" % newcmd, flush=True)
-                _proc = _subprocess.Popen(newcmd, env=env, close_fds=True,
-                    stdout=_subprocess.PIPE, stderr=_subprocess.PIPE,
-                    start_new_session=True)
-                forkpid = _proc.pid
-                self.write_status_from(conf, MainPID=forkpid)
-                logg.info("%s started PID %s", runs, forkpid)
-                env["MAINPID"] = strE(forkpid)
-                time.sleep(3)
-                run = subprocess_testpid(forkpid)
-                if run.returncode is not None:
-                    _out, _err = _proc.communicate()
-                    logg.info("%s stopped PID %s (%s) <-%s>", runs, run.pid,
-                              run.returncode or "OK", run.signal or "")
-                    print("stdout: %s" % _out.decode(errors='replace').strip(), flush=True)
-                    print("stderr: %s" % _err.decode(errors='replace').strip(), flush=True)
+                forkpid = os.fork()
+                if not forkpid: # pragma: no cover
+                    os.setsid() # detach child process from parent
+                    self.execve_from(conf, newcmd, env)
+                run = subprocess_waitpid(forkpid)
+                if run.returncode and exe.check:
+                    returncode = run.returncode
+                    service_result = "failed"
+                    logg.error("%s start %s (%s) <-%s>", runs, service_result,
+                               run.returncode or "OK", run.signal or "")
                     break
                 logg.info("%s start done (%s) <-%s>", runs,
                           run.returncode or "OK", run.signal or "")
@@ -4030,11 +4022,6 @@ class Systemctl:
                 logg.info("%s started PID %s", runs, forkpid)
                 env["MAINPID"] = strE(forkpid)
                 time.sleep(MinimumYield)
-                if run.returncode is not None:
-                    import subprocess as _sp
-                    _r = _sp.run(newcmd, env=env, capture_output=True, timeout=5)
-                    print("CRASH stdout:", _r.stdout.decode(errors='replace'), flush=True)
-                    print("CRASH stderr:", _r.stderr.decode(errors='replace'), flush=True)                
                 run = subprocess_testpid(forkpid)
                 if run.returncode is not None:
                     logg.info("%s stopped PID %s (%s) <-%s>", runs, run.pid,
@@ -4491,8 +4478,6 @@ class Systemctl:
                 sys.exit(exitcode)
             else: # pragma: no cover
                 env.pop('_', None)
-                logg.info("execve env: %s", env)
-                logg.info("execve cmd: %s", cmd)
                 os.execve(cmd[0], cmd, env)
                 sys.exit(11) # pragma: no cover (can not be reached / bug like mypy#8401)
         except (OSError, RuntimeError) as e:
