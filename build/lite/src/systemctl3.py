@@ -4470,6 +4470,7 @@ class Systemctl:
             sys.exit(1)
         env = self.extend_exec_env(env)
         env.update(envs) # set $HOME to ~$USER
+        env.pop('_', None) # prevent stale _ from breaking pkg-bundled Node.js binaries
         try:
             if EXEC_SPAWN:
                 cmd_args = [arg for arg in cmd] # satisfy mypy
