@@ -32,6 +32,10 @@ if [[ ! -x "$BIN_PATH" ]]; then
     echo "[INFO] EarnApp binary not found, installing..."
 
     # Unset _ to prevent the shell's last-command variable from being inherited
+    # by systemctl3.py when it forks earnapp. The Node.js pkg runtime uses this
+    # to resolve module paths — if _ points to the temp installer binary (which
+    # is deleted after install) earnapp run/autoupgrade are misresolved as paths
+    # (/run, /autoupgrade) causing an immediate MODULE_NOT_FOUND crash.
     unset _
 
     TMP_INSTALL="/tmp/earnapp.sh"
@@ -43,6 +47,14 @@ if [[ ! -x "$BIN_PATH" ]]; then
         echo "[INFO] Patching installer to install version $EARNAPP_VERSION..."
         sed -i "s/^VERSION=\"[^\"]*\"/VERSION=\"$EARNAPP_VERSION\"/" "$TMP_INSTALL"
     fi
+
+    # Patch install.sh to unset _ and set PKG_EXECPATH before running the binary.
+    # The Node.js pkg runtime uses _ to resolve module paths — during installation
+    # _ still points to the temp binary path which gets deleted after being moved
+    # to /usr/bin/earnapp. This causes earnapp run/autoupgrade to be misresolved
+    # as absolute paths (/run, /autoupgrade) resulting in MODULE_NOT_FOUND crashes
+    # and systemctl start earnapp failing during install.
+    sed -i 's|^\$INSTALL_CMD$|unset _\nexport PKG_EXECPATH="$FILENAME"\n$INSTALL_CMD|' "$TMP_INSTALL"
 
     if [[ "$DEBUG_MODE" == "1" ]]; then
         echo "yes" | bash "$TMP_INSTALL" \
