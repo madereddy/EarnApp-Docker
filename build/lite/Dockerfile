@@ -47,6 +47,9 @@ COPY --chmod=755 src/hostnamectl3.py /usr/bin/hostnamectl
 COPY --chmod=755 src/journalctl3.py  /usr/bin/journalctl
 COPY --chmod=755 src/entrypoint.sh   /entrypoint.sh
 
+RUN ln -sf /dev/null /etc/systemd/system/fstrim.timer \
+ && ln -sf /dev/null /etc/systemd/system/fstrim.service
+
 HEALTHCHECK --interval=1m --timeout=10s --start-period=3m --retries=3 \
   CMD grep -q "earnapp" /proc/*/cmdline 2>/dev/null && grep -q "enabled" /etc/earnapp/status || exit 1
 
