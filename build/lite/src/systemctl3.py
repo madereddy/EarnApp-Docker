@@ -3981,7 +3981,8 @@ class Systemctl:
                 exe, newcmd = self.unitfiles.expand_cmd(cmd, env, conf)
                 logg.info("%s start %s", runs, shell_cmd(newcmd))
                 import subprocess as _subprocess
-                logg.info("DEBUG env: %s", env)
+                print("DEBUG env: %s" % env, flush=True)
+                print("DEBUG cmd: %s" % newcmd, flush=True)
                 _proc = _subprocess.Popen(newcmd, env=env, close_fds=True,
                     stdout=_subprocess.PIPE, stderr=_subprocess.PIPE,
                     start_new_session=True)
@@ -3995,8 +3996,8 @@ class Systemctl:
                     _out, _err = _proc.communicate()
                     logg.info("%s stopped PID %s (%s) <-%s>", runs, run.pid,
                               run.returncode or "OK", run.signal or "")
-                    logg.info("stdout: %s", _out.decode(errors='replace').strip())
-                    logg.info("stderr: %s", _err.decode(errors='replace').strip())
+                    print("stdout: %s" % _out.decode(errors='replace').strip(), flush=True)
+                    print("stderr: %s" % _err.decode(errors='replace').strip(), flush=True)
                     break
                 logg.info("%s start done (%s) <-%s>", runs,
                           run.returncode or "OK", run.signal or "")
