@@ -31,6 +31,9 @@ touch "$CONFIG_DIR/status"
 if [[ ! -x "$BIN_PATH" ]]; then
     echo "[INFO] EarnApp binary not found, installing..."
 
+    # Unset _ to prevent the shell's last-command variable from being inherited
+    unset _
+
     TMP_INSTALL="/tmp/earnapp.sh"
     curl -fsSL "$INSTALLER_URL" -o "$TMP_INSTALL" \
         || { echo "[ERROR] Failed to download EarnApp installer. Check your internet connection."; exit 1; }
