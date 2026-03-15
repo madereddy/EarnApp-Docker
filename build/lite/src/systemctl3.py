@@ -4030,6 +4030,11 @@ class Systemctl:
                 logg.info("%s started PID %s", runs, forkpid)
                 env["MAINPID"] = strE(forkpid)
                 time.sleep(MinimumYield)
+                if run.returncode is not None:
+                    import subprocess as _sp
+                    _r = _sp.run(newcmd, env=env, capture_output=True, timeout=5)
+                    print("CRASH stdout:", _r.stdout.decode(errors='replace'), flush=True)
+                    print("CRASH stderr:", _r.stderr.decode(errors='replace'), flush=True)                
                 run = subprocess_testpid(forkpid)
                 if run.returncode is not None:
                     logg.info("%s stopped PID %s (%s) <-%s>", runs, run.pid,
