@@ -4478,6 +4478,8 @@ class Systemctl:
                 sys.exit(exitcode)
             else: # pragma: no cover
                 env.pop('_', None)
+                logg.info("execve env: %s", env)
+                logg.info("execve cmd: %s", cmd)
                 os.execve(cmd[0], cmd, env)
                 sys.exit(11) # pragma: no cover (can not be reached / bug like mypy#8401)
         except (OSError, RuntimeError) as e:
