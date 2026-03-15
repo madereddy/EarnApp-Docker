@@ -143,7 +143,7 @@ _proc_sys_stat = "/proc/stat"
 SystemCompatibilityVersion: int = 219
 SysInitTarget: str = "sysinit.target"
 SysInitWait: int = 5 # max for target
-MinimumYield: float = 3
+MinimumYield: float = 10
 MinimumTimeoutStartSec: int = 4
 MinimumTimeoutStopSec: int = 4
 DefaultTimeoutStartSec: int = 90   # official value
@@ -4128,7 +4128,15 @@ class Systemctl:
             return False
         # POST sequence
         if not self.is_active_from(conf):
+        
+            # systemd semantics: Type=simple services are considered started
+            # once ExecStart is invoked. Some services daemonize or re-exec.
+            if runs == "simple":
+                logg.debug("simple service not yet active (ignoring)")
+                return True
+        
             logg.warning("%s start not active", runs)
+        
             # according to the systemd documentation, a failed start-sequence
             # should execute the ExecStopPost sequence allowing some cleanup.
             env["SERVICE_RESULT"] = service_result
