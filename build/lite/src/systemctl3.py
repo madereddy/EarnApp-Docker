@@ -3980,16 +3980,23 @@ class Systemctl:
             for cmd in conf.getlist(Service, "ExecStart", []):
                 exe, newcmd = self.unitfiles.expand_cmd(cmd, env, conf)
                 logg.info("%s start %s", runs, shell_cmd(newcmd))
-                forkpid = os.fork()
-                if not forkpid: # pragma: no cover
-                    os.setsid() # detach child process from parent
-                    self.execve_from(conf, newcmd, env)
-                run = subprocess_waitpid(forkpid)
-                if run.returncode and exe.check:
-                    returncode = run.returncode
-                    service_result = "failed"
-                    logg.error("%s start %s (%s) <-%s>", runs, service_result,
-                               run.returncode or "OK", run.signal or "")
+                import subprocess as _subprocess
+                logg.info("DEBUG env: %s", env)
+                _proc = _subprocess.Popen(newcmd, env=env, close_fds=True,
+                    stdout=_subprocess.PIPE, stderr=_subprocess.PIPE,
+                    start_new_session=True)
+                forkpid = _proc.pid
+                self.write_status_from(conf, MainPID=forkpid)
+                logg.info("%s started PID %s", runs, forkpid)
+                env["MAINPID"] = strE(forkpid)
+                time.sleep(3)
+                run = subprocess_testpid(forkpid)
+                if run.returncode is not None:
+                    _out, _err = _proc.communicate()
+                    logg.info("%s stopped PID %s (%s) <-%s>", runs, run.pid,
+                              run.returncode or "OK", run.signal or "")
+                    logg.info("stdout: %s", _out.decode(errors='replace').strip())
+                    logg.info("stderr: %s", _err.decode(errors='replace').strip())
                     break
                 logg.info("%s start done (%s) <-%s>", runs,
                           run.returncode or "OK", run.signal or "")
