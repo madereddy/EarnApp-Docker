@@ -54,7 +54,7 @@ if [[ ! -x "$BIN_PATH" ]]; then
     # to /usr/bin/earnapp. This causes earnapp run/autoupgrade to be misresolved
     # as absolute paths (/run, /autoupgrade) resulting in MODULE_NOT_FOUND crashes
     # and systemctl start earnapp failing during install.
-    sed -i '2s|^|unset _\n|' "$TMP_INSTALL"
+    sed -i '1a unset _' "$TMP_INSTALL"
 
     if [[ "$DEBUG_MODE" == "1" ]]; then
         echo "yes" | bash "$TMP_INSTALL" \
