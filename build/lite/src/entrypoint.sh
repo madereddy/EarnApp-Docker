@@ -121,16 +121,15 @@ if ! grep -q " $CONFIG_DIR " /proc/mounts 2>/dev/null; then
 fi
 
 # --------------------------
-# Start EarnApp via systemctl
+# Start EarnApp manually if it already isnt running.
 # --------------------------
 TIMEOUT=30
 SLEEP_INTERVAL=2
 ELAPSED=0
 
 echo "[INFO] Ensuring EarnApp process is running..."
-
 while [ $ELAPSED -lt $TIMEOUT ]; do
-    if ps aux | grep '[e]arnapp run' > /dev/null; then
+    if $BIN_PATH showid &> /dev/null; then
         echo "[INFO] EarnApp process is running."
         break
     fi
@@ -141,7 +140,8 @@ done
 
 if [ $ELAPSED -ge $TIMEOUT ]; then
     echo "[ERROR] EarnApp did not start within $TIMEOUT seconds."
-    #"$BIN_PATH" run &
+    # Attempt to start it again with backoff
+    $BIN_PATH run &
 fi
 
 # --------------------------
@@ -208,7 +208,7 @@ MAX_BACKOFF=300
 
 while true; do
     START_TIME=$(date +%s)
-    #"$BIN_PATH" run || true
+    "$BIN_PATH" run || true
     RUN_DURATION=$(( $(date +%s) - START_TIME ))
 
     if [[ $RUN_DURATION -gt 60 ]]; then
