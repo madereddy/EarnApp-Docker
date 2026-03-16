@@ -4038,9 +4038,9 @@ class Systemctl:
                         logg.error("returncode=%s signal=%s", run.returncode, run.signal)
                 
                     # print service environment for debugging
-                    logg.error("environment used for service:")
+                    logg.debug("environment used for service:")
                     for k, v in env.items():
-                        logg.error("  %s=%s", k, v)
+                        logg.debug("  %s=%s", k, v)
                 
                     logg.info("%s stopped PID %s (%s) <-%s>", runs, run.pid,
                               run.returncode or "OK", run.signal or "")
