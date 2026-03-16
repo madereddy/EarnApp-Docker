@@ -129,9 +129,9 @@ ELAPSED=0
 
 echo "[INFO] Ensuring EarnApp process is running..."
 
-while ! pgrep -f "$BIN_PATH" >/dev/null 2>&1; do
-    if [ $ELAPSED -ge $TIMEOUT ]; then
-        echo "[ERROR] EarnApp process did not start within $TIMEOUT seconds."
+while [ $ELAPSED -lt $TIMEOUT ]; do
+    if ps aux | grep '[e]arnapp run' > /dev/null; then
+        echo "[INFO] EarnApp process is running."
         break
     fi
     echo "[INFO] Waiting for EarnApp process..."
@@ -139,11 +139,9 @@ while ! pgrep -f "$BIN_PATH" >/dev/null 2>&1; do
     ELAPSED=$((ELAPSED + SLEEP_INTERVAL))
 done
 
-if ! pgrep -f "$BIN_PATH" >/dev/null 2>&1; then
-    echo "[WARN] Starting EarnApp manually..."
-    #"$BIN_PATH" run &
-else
-    echo "[INFO] EarnApp process is running."
+if [ $ELAPSED -ge $TIMEOUT ]; then
+    echo "[ERROR] EarnApp did not start within $TIMEOUT seconds."
+    "$BIN_PATH" run &
 fi
 
 # --------------------------
