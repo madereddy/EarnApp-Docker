@@ -46,6 +46,12 @@ COPY --chmod=755 src/systemctl3.py   /usr/bin/systemctl
 COPY --chmod=755 src/hostnamectl3.py /usr/bin/hostnamectl
 COPY --chmod=755 src/journalctl3.py  /usr/bin/journalctl
 COPY --chmod=755 src/entrypoint.sh   /entrypoint.sh
+# Copy pre-made service files
+COPY --chmod=644 src/earnapp.service /etc/systemd/system/earnapp.service
+COPY --chmod=644 src/earnapp_upgrader.service /etc/systemd/system/earnapp_upgrader.service
+
+# Reload systemctl wrapper so new services are recognized
+RUN systemctl daemon-reload
 
 RUN ln -sf /dev/null /etc/systemd/system/fstrim.timer \
  && ln -sf /dev/null /etc/systemd/system/fstrim.service
