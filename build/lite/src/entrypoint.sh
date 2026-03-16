@@ -153,7 +153,7 @@ BACKOFF=2
 MAX_BACKOFF=30
 
 for i in $(seq 1 $MAX_ATTEMPTS); do
-    DEVICE_ID=$(("$BIN_PATH" showid 2>/dev/null || true) | tr -d '[:space:]')
+    DEVICE_ID=$("$BIN_PATH" showid 2>/dev/null || true | tr -d '[:space:]')
     if [[ -n "$DEVICE_ID" && "$DEVICE_ID" != "undefined" ]]; then
         break
     fi
