@@ -126,11 +126,12 @@ fi
 echo "[INFO] Ensuring EarnApp service is running..."
 sleep 2  # small delay to let installer start the service
 
-if systemctl is-active --quiet earnapp; then
-    echo "[INFO] EarnApp service is already running (started by installer)."
+if pgrep -f "$BIN_PATH" >/dev/null 2>&1; then
+    echo "[INFO] EarnApp process is already running."
 else
-    echo "[WARN] EarnApp service not running after installer, starting manually..."
-    systemctl start earnapp || echo "[ERROR] Failed to start EarnApp service manually."
+    echo "[WARN] EarnApp process not detected — starting manually..."
+    "$BIN_PATH" run &
+    sleep 2
 fi
 
 # --------------------------
