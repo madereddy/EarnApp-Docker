@@ -123,15 +123,27 @@ fi
 # --------------------------
 # Start EarnApp via systemctl
 # --------------------------
-echo "[INFO] Ensuring EarnApp service is running..."
-sleep 2  # small delay to let installer start the service
+TIMEOUT=30
+SLEEP_INTERVAL=2
+ELAPSED=0
 
-if pgrep -f "$BIN_PATH" >/dev/null 2>&1; then
-    echo "[INFO] EarnApp process is already running."
-else
-    echo "[WARN] EarnApp process not detected — starting manually..."
+echo "[INFO] Ensuring EarnApp process is running..."
+
+while ! pgrep -f "$BIN_PATH" >/dev/null 2>&1; do
+    if [ $ELAPSED -ge $TIMEOUT ]; then
+        echo "[ERROR] EarnApp process did not start within $TIMEOUT seconds."
+        break
+    fi
+    echo "[INFO] Waiting for EarnApp process..."
+    sleep $SLEEP_INTERVAL
+    ELAPSED=$((ELAPSED + SLEEP_INTERVAL))
+done
+
+if ! pgrep -f "$BIN_PATH" >/dev/null 2>&1; then
+    echo "[WARN] Starting EarnApp manually..."
     "$BIN_PATH" run &
-    sleep 2
+else
+    echo "[INFO] EarnApp process is running."
 fi
 
 # --------------------------
