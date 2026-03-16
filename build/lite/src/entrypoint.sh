@@ -30,38 +30,31 @@ touch "$CONFIG_DIR/status"
 # --------------------------
 if [[ ! -x "$BIN_PATH" ]]; then
     echo "[INFO] EarnApp binary not found, installing..."
-
-    # Unset _ to prevent the shell's last-command variable from being inherited
-    # by systemctl3.py when it forks earnapp. The Node.js pkg runtime uses this
-    # to resolve module paths — if _ points to the temp installer binary (which
-    # is deleted after install) earnapp run/autoupgrade are misresolved as paths
-    # (/run, /autoupgrade) causing an immediate MODULE_NOT_FOUND crash.
     unset _
 
     TMP_INSTALL="/tmp/earnapp.sh"
     curl -fsSL "$INSTALLER_URL" -o "$TMP_INSTALL" \
-        || { echo "[ERROR] Failed to download EarnApp installer. Check your internet connection."; exit 1; }
+        || { echo "[ERROR] Failed to download EarnApp installer."; exit 1; }
 
     # Patch install.sh to pin version if EARNAPP_VERSION is defined
-    if [[ -n "${EARNAPP_VERSION:-}" ]]; then
+    if [[ -n "$EARNAPP_VERSION" ]]; then
         echo "[INFO] Patching installer to install version $EARNAPP_VERSION..."
         sed -i "s/^VERSION=\"[^\"]*\"/VERSION=\"$EARNAPP_VERSION\"/" "$TMP_INSTALL"
     fi
 
-    # Patch install.sh to unset _ immediately after the shebang line.
-    # The Node.js pkg runtime uses _ to resolve module paths — during installation
-    # _ still points to the temp binary path which gets deleted after being moved
-    # to /usr/bin/earnapp. This causes earnapp run/autoupgrade to be misresolved
-    # as absolute paths (/run, /autoupgrade) resulting in MODULE_NOT_FOUND crashes
-    # and systemctl start earnapp failing during install.
+    # Patch install.sh to unset _ immediately after shebang
     sed -i '1a unset _' "$TMP_INSTALL"
 
+    # Patch installer to prevent starting the process directly
+    sed -i '/\$INSTALL_CMD$/c\
+        # Run finish_install without starting the daemon; systemctl3.py will start it\
+        INSTALL_CMD="$INSTALL_CMD finish_install --no-start"\
+        $INSTALL_CMD' "$TMP_INSTALL"
+
     if [[ "$DEBUG_MODE" == "1" ]]; then
-        echo "yes" | bash "$TMP_INSTALL" \
-            || { echo "[ERROR] EarnApp installation failed."; exit 1; }
+        echo "yes" | bash "$TMP_INSTALL" || { echo "[ERROR] EarnApp installation failed."; exit 1; }
     else
-        echo "yes" | bash "$TMP_INSTALL" &>/dev/null \
-            || { echo "[ERROR] EarnApp installation failed."; exit 1; }
+        echo "yes" | bash "$TMP_INSTALL" &>/dev/null || { echo "[ERROR] EarnApp installation failed."; exit 1; }
     fi
 
     rm -f "$TMP_INSTALL"
@@ -88,7 +81,7 @@ until [[ -f "$SERVICE_FILE" ]] || [[ $WAIT -ge 30 ]]; do
 done
 
 if [[ ! -f "$SERVICE_FILE" ]]; then
-    echo "[ERROR] EarnApp service file not found after ${WAIT}s. Installation may have failed."
+    echo "[ERROR] EarnApp service file not found after ${WAIT}s."
     exit 1
 fi
 echo "[INFO] Service file found after ${WAIT}s."
@@ -121,28 +114,12 @@ if ! grep -q " $CONFIG_DIR " /proc/mounts 2>/dev/null; then
 fi
 
 # --------------------------
-# Start EarnApp manually if it already isnt running.
+# Start EarnApp via systemctl3.py
 # --------------------------
-TIMEOUT=30
-SLEEP_INTERVAL=2
-ELAPSED=0
-
-echo "[INFO] Ensuring EarnApp process is running..."
-while [ $ELAPSED -lt $TIMEOUT ]; do
-    if $BIN_PATH showid &> /dev/null; then
-        echo "[INFO] EarnApp process is running."
-        break
-    fi
-    echo "[INFO] Waiting for EarnApp process..."
-    sleep $SLEEP_INTERVAL
-    ELAPSED=$((ELAPSED + SLEEP_INTERVAL))
-done
-
-if [ $ELAPSED -ge $TIMEOUT ]; then
-    echo "[ERROR] EarnApp did not start within $TIMEOUT seconds."
-    # Attempt to start it again with backoff
-    $BIN_PATH run &
-fi
+echo "[INFO] Starting EarnApp service via systemctl3.py..."
+systemctl3.py daemon-reload
+systemctl3.py enable earnapp
+systemctl3.py start earnapp
 
 # --------------------------
 # Wait for UUID registration with exponential backoff
