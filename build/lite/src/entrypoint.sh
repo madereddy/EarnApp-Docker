@@ -50,10 +50,12 @@ if [[ ! -x "$BIN_PATH" ]]; then
         # Run finish_install without starting the daemon; systemctl3.py will start it\
         INSTALL_CMD="$INSTALL_CMD finish_install --no-start"\
         $INSTALL_CMD' "$TMP_INSTALL"
-    sed -i 's/service earnapp restart/true/g' "$TMP_INSTALL"
-    sed -i 's/service earnapp_upgrader restart/true/g' "$TMP_INSTALL"
     sed -i 's/service earnapp start/true/g' "$TMP_INSTALL"
+    sed -i 's/service earnapp restart/true/g' "$TMP_INSTALL"
     sed -i 's/service earnapp_upgrader start/true/g' "$TMP_INSTALL"
+    sed -i 's/service earnapp_upgrader restart/true/g' "$TMP_INSTALL"
+    sed -i 's/systemctl start earnapp/true/g' "$TMP_INSTALL"
+    sed -i 's/systemctl restart earnapp/true/g' "$TMP_INSTALL"
 
     if [[ "$DEBUG_MODE" == "1" ]]; then
         echo "yes" | bash "$TMP_INSTALL" || { echo "[ERROR] EarnApp installation failed."; exit 1; }
@@ -120,11 +122,13 @@ fi
 # --------------------------
 # Start EarnApp via systemctl3.py
 # --------------------------
-pkill -f "/usr/bin/earnapp run" || true
+echo "[INFO] Starting EarnApp service..."
+
+pkill -9 -f "/usr/bin/earnapp" 2>/dev/null || true
 sleep 2
 
-echo "[INFO] Starting EarnApp service via systemctl3.py..."
 systemctl daemon-reload
+systemctl reset-failed earnapp || true
 systemctl enable earnapp
 systemctl start earnapp
 
