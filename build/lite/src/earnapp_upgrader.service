@@ -1,0 +1,17 @@
+[Unit]
+Description=EarnApp auto-upgrader
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=5
+ExecStart=/usr/bin/earnapp autoupgrade
+User=root
+StandardOutput=inherit
+StandardError=inherit
+WorkingDirectory=/etc/earnapp
+
+[Install]
+WantedBy=multi-user.target

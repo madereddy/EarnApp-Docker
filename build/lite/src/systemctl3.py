@@ -4031,8 +4031,11 @@ class Systemctl:
                 run = subprocess_testpid(forkpid)
                 
                 if run.returncode is not None:
-                    logg.error("%s process exited early PID %s", runs, run.pid)
-                    logg.error("returncode=%s signal=%s", run.returncode, run.signal)
+                    if run.returncode == 0:
+                        logg.debug("%s process exited normally PID %s", runs, run.pid)
+                    else:
+                        logg.error("%s process exited early PID %s", runs, run.pid)
+                        logg.error("returncode=%s signal=%s", run.returncode, run.signal)
                 
                     # print service environment for debugging
                     logg.error("environment used for service:")

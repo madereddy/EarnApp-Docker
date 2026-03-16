@@ -1,0 +1,17 @@
+[Unit]
+Description=EarnApp
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/earnapp run
+Restart=on-failure
+RestartSec=5
+User=root
+WorkingDirectory=/etc/earnapp
+StandardOutput=inherit
+StandardError=inherit
+
+[Install]
+WantedBy=multi-user.target
