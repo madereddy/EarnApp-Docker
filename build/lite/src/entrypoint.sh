@@ -187,21 +187,21 @@ echo "------------------------------------------------------------"
 # --------------------------
 # Run EarnApp loop
 # --------------------------
-BACKOFF=5
-MAX_BACKOFF=300
+#BACKOFF=5
+#MAX_BACKOFF=300
+#
+#while true; do
+#    START_TIME=$(date +%s)
+#    "$BIN_PATH" run || true
+#    RUN_DURATION=$(( $(date +%s) - START_TIME ))
 
-while true; do
-    START_TIME=$(date +%s)
-    "$BIN_PATH" run || true
-    RUN_DURATION=$(( $(date +%s) - START_TIME ))
-
-    if [[ $RUN_DURATION -gt 60 ]]; then
-        BACKOFF=5
-        echo "[INFO] EarnApp exited after ${RUN_DURATION}s, restarting in ${BACKOFF}s..."
-    else
-        echo "[WARN] EarnApp crashed after ${RUN_DURATION}s, backing off ${BACKOFF}s..."
-        sleep "$BACKOFF"
-        BACKOFF=$((BACKOFF * 2))
-        [[ $BACKOFF -gt $MAX_BACKOFF ]] && BACKOFF=$MAX_BACKOFF
-    fi
+#    if [[ $RUN_DURATION -gt 60 ]]; then
+#        BACKOFF=5
+#        echo "[INFO] EarnApp exited after ${RUN_DURATION}s, restarting in ${BACKOFF}s..."
+#    else
+#        echo "[WARN] EarnApp crashed after ${RUN_DURATION}s, backing off ${BACKOFF}s..."
+#        sleep "$BACKOFF"
+#        BACKOFF=$((BACKOFF * 2))
+#        [[ $BACKOFF -gt $MAX_BACKOFF ]] && BACKOFF=$MAX_BACKOFF
+#    fi
 done
