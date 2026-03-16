@@ -123,9 +123,21 @@ fi
 # --------------------------
 # Start EarnApp via systemctl
 # --------------------------
-echo "[INFO] Starting EarnApp via systemctl..."
-systemctl start earnapp 2>/dev/null || true
-sleep 2
+echo "[INFO] Checking if EarnApp service is already running..."
+if systemctl is-active --quiet earnapp; then
+    RUNNING_PID=$(systemctl show -p MainPID --value earnapp)
+    if [[ -n "$RUNNING_PID" && "$RUNNING_PID" != "0" ]]; then
+        echo "[INFO] EarnApp service already running (PID $RUNNING_PID), skipping start."
+    else
+        echo "[INFO] EarnApp service appears active but no PID found, attempting restart..."
+        systemctl restart earnapp 2>/dev/null || true
+        sleep 2
+    fi
+else
+    echo "[INFO] Service not running, starting via systemctl..."
+    systemctl start earnapp 2>/dev/null || true
+    sleep 2
+fi
 
 # --------------------------
 # Wait for UUID registration with exponential backoff
