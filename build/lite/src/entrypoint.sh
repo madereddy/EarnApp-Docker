@@ -205,3 +205,8 @@ echo "------------------------------------------------------------"
 #        [[ $BACKOFF -gt $MAX_BACKOFF ]] && BACKOFF=$MAX_BACKOFF
 #    fi
 #done
+
+echo "[INFO] Entrypoint complete. EarnApp managed by systemctl."
+
+# keep container alive while systemctl manages services
+exec sleep infinity
