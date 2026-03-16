@@ -117,9 +117,9 @@ fi
 # Start EarnApp via systemctl3.py
 # --------------------------
 echo "[INFO] Starting EarnApp service via systemctl3.py..."
-systemctl3.py daemon-reload
-systemctl3.py enable earnapp
-systemctl3.py start earnapp
+systemctl daemon-reload
+systemctl enable earnapp
+systemctl start earnapp
 
 # --------------------------
 # Wait for UUID registration with exponential backoff
