@@ -213,4 +213,6 @@ echo "------------------------------------------------------------"
 echo "[INFO] Entrypoint complete. EarnApp managed by systemctl."
 
 # keep container alive while systemctl manages services
-exec sleep infinity
+while true; do
+    wait -n || sleep 60
+done
