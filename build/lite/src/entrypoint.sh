@@ -141,7 +141,7 @@ done
 
 if [ $ELAPSED -ge $TIMEOUT ]; then
     echo "[ERROR] EarnApp did not start within $TIMEOUT seconds."
-    "$BIN_PATH" run &
+    #"$BIN_PATH" run &
 fi
 
 # --------------------------
@@ -208,7 +208,7 @@ MAX_BACKOFF=300
 
 while true; do
     START_TIME=$(date +%s)
-    "$BIN_PATH" run || true
+    #"$BIN_PATH" run || true
     RUN_DURATION=$(( $(date +%s) - START_TIME ))
 
     if [[ $RUN_DURATION -gt 60 ]]; then
