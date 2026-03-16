@@ -123,20 +123,14 @@ fi
 # --------------------------
 # Start EarnApp via systemctl
 # --------------------------
-echo "[INFO] Checking if EarnApp service is already running..."
+echo "[INFO] Ensuring EarnApp service is running..."
+sleep 2  # small delay to let installer start the service
+
 if systemctl is-active --quiet earnapp; then
-    RUNNING_PID=$(systemctl show -p MainPID --value earnapp)
-    if [[ -n "$RUNNING_PID" && "$RUNNING_PID" != "0" ]]; then
-        echo "[INFO] EarnApp service already running (PID $RUNNING_PID), skipping start."
-    else
-        echo "[INFO] EarnApp service appears active but no PID found, attempting restart..."
-        systemctl restart earnapp 2>/dev/null || true
-        sleep 2
-    fi
+    echo "[INFO] EarnApp service is already running (started by installer)."
 else
-    echo "[INFO] Service not running, starting via systemctl..."
-    systemctl start earnapp 2>/dev/null || true
-    sleep 2
+    echo "[WARN] EarnApp service not running after installer, starting manually..."
+    systemctl start earnapp || echo "[ERROR] Failed to start EarnApp service manually."
 fi
 
 # --------------------------
