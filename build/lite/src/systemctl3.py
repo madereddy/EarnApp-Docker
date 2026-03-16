@@ -4015,15 +4015,30 @@ class Systemctl:
                 exe, newcmd = self.unitfiles.expand_cmd(cmd, env, conf)
                 logg.info("%s start %s", runs, shell_cmd(newcmd))
                 forkpid = os.fork()
-                if not forkpid: # pragma: no cover
-                    os.setsid() # detach child process from parent
-                    self.execve_from(conf, newcmd, env)
+                if forkpid == 0:  # first child
+                    os.setsid()   # detach session
+                
+                    second = os.fork()
+                    if second == 0:  # grandchild (actual service)
+                        self.execve_from(conf, newcmd, env)
+                
+                    os._exit(0)  # first child exits
+                
                 self.write_status_from(conf, MainPID=forkpid)
                 logg.info("%s started PID %s", runs, forkpid)
                 env["MAINPID"] = strE(forkpid)
                 time.sleep(MinimumYield)
                 run = subprocess_testpid(forkpid)
+                
                 if run.returncode is not None:
+                    logg.error("%s process exited early PID %s", runs, run.pid)
+                    logg.error("returncode=%s signal=%s", run.returncode, run.signal)
+                
+                    # print service environment for debugging
+                    logg.error("environment used for service:")
+                    for k, v in env.items():
+                        logg.error("  %s=%s", k, v)
+                
                     logg.info("%s stopped PID %s (%s) <-%s>", runs, run.pid,
                               run.returncode or "OK", run.signal or "")
                     if doRemainAfterExit:
@@ -4476,8 +4491,12 @@ class Systemctl:
         if badpath:
             logg.error("(%s): bad workingdir: '%s'", shell_cmd(cmd), badpath)
             sys.exit(1)
+        # inherit full process environment like real systemd
+        env = {**os.environ, **env}
+        
         env = self.extend_exec_env(env)
         env.update(envs) # set $HOME to ~$USER
+        env.setdefault("PATH", os.environ.get("PATH", "/usr/bin:/bin")) ## fix for Node.js packages failing by the path changing
         env.pop('_', None) # prevent stale _ from breaking pkg-bundled Node.js binaries
         try:
             if EXEC_SPAWN:
@@ -4486,6 +4505,7 @@ class Systemctl:
                 sys.exit(exitcode)
             else: # pragma: no cover
                 env.pop('_', None)
+                logg.debug("execve launching: %s", shell_cmd(cmd))
                 os.execve(cmd[0], cmd, env)
                 sys.exit(11) # pragma: no cover (can not be reached / bug like mypy#8401)
         except (OSError, RuntimeError) as e:
