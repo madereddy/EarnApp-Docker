@@ -120,7 +120,7 @@ fi
 # --------------------------
 # Start EarnApp via systemctl3.py
 # --------------------------
-pkill -f "/usr/bin/earnapp" || true
+pkill -f "/usr/bin/earnapp run" || true
 sleep 2
 
 echo "[INFO] Starting EarnApp service via systemctl3.py..."
