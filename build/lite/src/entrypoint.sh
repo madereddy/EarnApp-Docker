@@ -141,7 +141,7 @@ done
 
 if ! pgrep -f "$BIN_PATH" >/dev/null 2>&1; then
     echo "[WARN] Starting EarnApp manually..."
-    "$BIN_PATH" run &
+    #"$BIN_PATH" run &
 else
     echo "[INFO] EarnApp process is running."
 fi
