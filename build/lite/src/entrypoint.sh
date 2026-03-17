@@ -123,14 +123,16 @@ fi
 # Start EarnApp via systemctl3.py
 # --------------------------
 echo "[INFO] Starting EarnApp service..."
-export _="$BIN_PATH"
-export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+# Inject required env into service
+sed -i '/^\[Service\]/a Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' /etc/systemd/system/earnapp.service
 sed -i '/^\[Service\]/a Environment=_='"$BIN_PATH"'' /etc/systemd/system/earnapp.service
 
+# Kill any leftover processes
 pkill -9 -f "/usr/bin/earnapp" 2>/dev/null || true
 sleep 2
 
-systemctl -1
+# Start service cleanly
 systemctl daemon-reload
 systemctl reset-failed earnapp || true
 systemctl enable earnapp
